@@ -1,0 +1,29 @@
+openapi: 3.0.0
+info:
+  title: Civic Intelligence Platform API
+  description: API documentation for the AI-Powered Civic Intelligence Platform
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Development server
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the status of the API
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Server is running
+                  timestamp:
+                    type: string
