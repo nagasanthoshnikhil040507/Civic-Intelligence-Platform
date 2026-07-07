@@ -117,12 +117,25 @@ export class ComplaintController {
 
   static async uploadImages(req: Request, res: Response, next: NextFunction) {
     try {
+      console.log('--- DEBUG: Incoming image upload request ---');
+      console.log('Complaint ID:', req.params.id);
+      console.log('Number of files received:', req.files ? (req.files as any[]).length : 0);
+      
+      if (req.files && Array.isArray(req.files)) {
+        req.files.forEach((file: any, i: number) => {
+          console.log(`File ${i + 1}: mimetype=${file.mimetype}, size=${file.size} bytes`);
+        });
+      }
+
       if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
         throw new ApiError(400, 'No image files provided');
       }
 
       const userId = req.user!.role === 'admin' ? 'admin' : req.user!.userId;
+      
+      console.log('Calling ComplaintService.uploadImages...');
       const complaint = await complaintService.uploadImages(req.params.id, userId, req.files as Express.Multer.File[]);
+      console.log('Successfully updated MongoDB document for complaint:', complaint.id);
 
       await auditLogService.recordEntityChange(
         'Complaint',
@@ -135,7 +148,10 @@ export class ComplaintController {
       );
 
       res.status(200).json(new ApiResponse(200, complaint, 'Images uploaded successfully'));
-    } catch (error) {
+    } catch (error: any) {
+      console.error('--- DEBUG: Error in uploadImages ---');
+      console.error('Stack trace:', error.stack || error);
+      console.error('HTTP Status:', error.statusCode || 500);
       next(error);
     }
   }

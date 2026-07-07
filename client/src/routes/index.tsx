@@ -12,6 +12,8 @@ const Login = lazy(() => import('@/pages/auth/Login'));
 const Register = lazy(() => import('@/pages/auth/Register'));
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
 const Complaints = lazy(() => import('@/pages/dashboard/Complaints'));
+const ComplaintDetails = lazy(() => import('@/pages/dashboard/ComplaintDetails'));
+const ReportComplaint = lazy(() => import('@/pages/dashboard/ReportComplaint'));
 const Analytics = lazy(() => import('@/pages/dashboard/Analytics'));
 const Profile = lazy(() => import('@/pages/dashboard/Profile'));
 const Settings = lazy(() => import('@/pages/dashboard/Settings'));
@@ -46,6 +48,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: withSuspense(Dashboard) },
           { path: 'complaints', element: withSuspense(Complaints) },
+          { path: 'complaints/:id', element: withSuspense(ComplaintDetails) },
+          { path: 'report', element: withSuspense(ReportComplaint) },
           { path: 'analytics', element: withSuspense(Analytics) },
           { path: 'profile', element: withSuspense(Profile) },
           { path: 'settings', element: withSuspense(Settings) },
