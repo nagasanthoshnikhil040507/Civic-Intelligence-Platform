@@ -196,10 +196,24 @@ export default function ComplaintDetails() {
                 </div>
               </div>
               <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Priority</p>
+                <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                  <AlertCircle className={`w-4 h-4 ${complaint.priority === 'high' || complaint.priority === 'critical' ? 'text-red-500' : 'text-slate-400'}`} />
+                  <span className="capitalize">{complaint.priority || 'Medium'}</span>
+                </div>
+              </div>
+              <div>
                 <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Department</p>
                 <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
                   <Building2 className="w-4 h-4 text-slate-400" />
-                  <span>Unassigned</span>
+                  <span>{complaint.department ? complaint.department.name : 'Unassigned'}</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Last Updated</p>
+                <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  <span>{complaint.updatedAt ? new Date(complaint.updatedAt).toLocaleString() : new Date(complaint.createdAt).toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -219,29 +233,93 @@ export default function ComplaintDetails() {
             </div>
           </div>
 
-          {/* Timeline Placeholder */}
+          {/* Timeline Section */}
           <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
               <Clock className="w-5 h-5 text-slate-400" />
               Timeline
             </h3>
-            <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-              <div className="relative">
-                <div className="absolute -left-8 w-4 h-4 rounded-full bg-indigo-100 border-2 border-indigo-500 flex items-center justify-center"></div>
-                <p className="text-sm font-medium text-slate-900">Complaint Submitted</p>
-                <p className="text-xs text-slate-500 mt-0.5">{new Date(complaint.createdAt).toLocaleDateString()}</p>
-              </div>
-              <div className="relative opacity-50">
-                <div className="absolute -left-8 w-4 h-4 rounded-full bg-slate-100 border-2 border-slate-300"></div>
-                <p className="text-sm font-medium text-slate-500">Under Review</p>
-                <p className="text-xs text-slate-400 mt-0.5">Pending Officer Assignment</p>
-              </div>
-              <div className="relative opacity-50">
-                <div className="absolute -left-8 w-4 h-4 rounded-full bg-slate-100 border-2 border-slate-300"></div>
-                <p className="text-sm font-medium text-slate-500">Resolved</p>
-                <p className="text-xs text-slate-400 mt-0.5">Awaiting Resolution</p>
-              </div>
-            </div>
+            
+            {(() => {
+              // Define the standard progression of statuses
+              const statusProgression = ['pending', 'assigned', 'in_progress', 'resolved', 'closed'];
+              
+              // Normalize status names for display
+              const getStatusDisplay = (s: string) => {
+                switch (s) {
+                  case 'pending': return 'Complaint Submitted';
+                  case 'assigned': return 'Under Review';
+                  case 'in_progress': return 'In Progress';
+                  case 'resolved': return 'Resolved';
+                  case 'closed': return 'Closed';
+                  case 'rejected': return 'Rejected';
+                  default: return s.replace('_', ' ');
+                }
+              };
+
+              // Map timeline events from DB, or generate a fallback from createdAt/updatedAt
+              let events = [...(complaint.timeline || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+              
+              if (events.length === 0) {
+                events.push({ status: 'pending', timestamp: complaint.createdAt });
+                if (complaint.status !== 'pending') {
+                  events.push({ status: complaint.status, timestamp: complaint.updatedAt || complaint.createdAt });
+                }
+              }
+
+              // Build the full visual timeline
+              const currentStatusIndex = complaint.status === 'rejected' ? -1 : statusProgression.indexOf(complaint.status);
+              
+              const timelineNodes = complaint.status === 'rejected' 
+                ? [
+                    { status: 'pending', display: 'Complaint Submitted', done: true, time: events.find(e => e.status === 'pending')?.timestamp || complaint.createdAt },
+                    { status: 'rejected', display: 'Rejected', done: true, time: events.find(e => e.status === 'rejected')?.timestamp || complaint.updatedAt }
+                  ]
+                : statusProgression.map((status, index) => {
+                    const event = events.find(e => e.status === status) || events.reverse().find(e => statusProgression.indexOf(e.status) >= index);
+                    const isDone = index <= currentStatusIndex;
+                    const isCurrent = index === currentStatusIndex;
+                    
+                    return {
+                      status,
+                      display: getStatusDisplay(status),
+                      done: isDone,
+                      current: isCurrent,
+                      time: isDone && event ? event.timestamp : null,
+                      note: isDone && event?.note ? event.note : null
+                    };
+                  });
+
+              return (
+                <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-indigo-500 before:via-slate-200 before:to-transparent">
+                  {timelineNodes.map((node, i) => (
+                    <div key={i} className={`relative ${!node.done ? 'opacity-50' : ''}`}>
+                      <div className={`absolute -left-8 w-4 h-4 rounded-full border-2 flex items-center justify-center bg-white ${
+                        node.current ? 'border-indigo-600 shadow-[0_0_0_4px_rgba(79,70,229,0.1)]' : 
+                        node.done ? 'border-indigo-500 bg-indigo-50' : 
+                        'border-slate-300'
+                      }`}>
+                        {node.done && !node.current && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                        {node.current && <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />}
+                      </div>
+                      <p className={`text-sm font-medium ${node.current ? 'text-indigo-700' : 'text-slate-900'}`}>
+                        {node.display}
+                      </p>
+                      {node.time ? (
+                        <p className="text-xs text-slate-500 mt-0.5">{new Date(node.time).toLocaleString()}</p>
+                      ) : (
+                        <p className="text-xs text-slate-400 mt-0.5">Pending</p>
+                      )}
+                      {node.note && (
+                        <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
+                          {node.note}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

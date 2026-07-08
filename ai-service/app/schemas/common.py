@@ -1,13 +1,12 @@
 from pydantic import BaseModel
-from typing import Any, Optional
+from typing import Optional, Dict, Any
 
-class APIResponse(BaseModel):
-    success: bool
-    data: Optional[Any] = None
-    message: str = "Success"
-    
-class PredictionRequest(BaseModel):
-    image_url: Optional[str] = None
-    description: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+    version: str
+
+class ErrorResponse(BaseModel):
+    success: bool = False
+    detail: str
+    error_code: Optional[str] = None

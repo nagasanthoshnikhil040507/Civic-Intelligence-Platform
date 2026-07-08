@@ -23,7 +23,24 @@ router.patch('/:id', enforceRole([Role.CITIZEN, Role.ADMIN]), ComplaintControlle
 router.delete('/:id', enforceRole([Role.CITIZEN, Role.ADMIN]), ComplaintController.delete);
 
 import { upload } from '../../../middlewares/upload';
-router.post('/:id/images', enforceRole([Role.CITIZEN, Role.ADMIN]), upload.array('images', 5), ComplaintController.uploadImages);
+
+router.post('/:id/images', 
+  enforceRole([Role.CITIZEN, Role.ADMIN]), 
+  (req, res, next) => {
+    console.log('--- BEFORE MULTER ---');
+    console.log('Headers Content-Type:', req.headers['content-type']);
+    next();
+  },
+  upload.array('images', 5), 
+  (req, res, next) => {
+    console.log('--- AFTER MULTER ---');
+    console.log('req.body:', req.body);
+    console.log('req.files:', req.files);
+    console.log('Object.keys(req.body):', Object.keys(req.body || {}));
+    next();
+  },
+  ComplaintController.uploadImages
+);
 router.delete('/:id/images/:publicId(*)', enforceRole([Role.CITIZEN, Role.ADMIN]), ComplaintController.removeImage);
 
 export default router;

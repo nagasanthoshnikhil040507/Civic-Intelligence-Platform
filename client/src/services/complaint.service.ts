@@ -27,6 +27,16 @@ export interface ComplaintResponse {
     width?: number;
     height?: number;
   }>;
+  timeline?: Array<{
+    status: string;
+    updatedBy?: string;
+    timestamp: string;
+    note?: string;
+  }>;
+  priority?: string;
+  departmentId?: string;
+  department?: any; // If populated
+  updatedAt?: string;
   createdAt: string;
 }
 
@@ -54,7 +64,11 @@ export class ComplaintService {
       formData.append('images', file);
     });
 
-    const response = await api.post(`/complaints/${id}/images`, formData);
+    const response = await api.post(`/complaints/${id}/images`, formData, {
+      headers: {
+        'Content-Type': undefined
+      }
+    });
     return response.data.data;
   }
 

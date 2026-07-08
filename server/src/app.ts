@@ -60,6 +60,24 @@ app.get('/api/health', (req, res) => {
 const swaggerDocument = YAML.load(path.resolve(process.cwd(), 'docs/swagger.yml'));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+import axios from 'axios';
+
+// AI Integration Health Check
+app.get('/api/v1/system/ai-health', async (req, res) => {
+  try {
+    const response = await axios.get(`${config.aiServiceUrl}/api/v1/health`);
+    res.json({
+      status: 'connected',
+      aiServiceResponse: response.data
+    });
+  } catch (error: any) {
+    res.status(502).json({
+      status: 'disconnected',
+      error: error.message
+    });
+  }
+});
+
 // V1 API Routes
 app.use('/api/v1', routesV1);
 

@@ -26,7 +26,7 @@ const formSchema = z.object({
     z.number().min(-180, 'Invalid longitude').max(180, 'Invalid longitude'),
     z.number().min(-90, 'Invalid latitude').max(90, 'Invalid latitude'),
   ], { required_error: 'Please pinpoint the exact location on the map.' }),
-  images: z.array(z.any()).max(5, 'Maximum 5 images allowed').default([]),
+  // Remove images from Zod to prevent RHF from destroying File prototypes
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -36,13 +36,12 @@ export default function ReportComplaint() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [images, setImages] = useState<File[]>([]);
+  const [imageError, setImageError] = useState('');
 
-  const { register, handleSubmit, formState: { errors, isValid }, trigger, getValues, setValue, watch } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors, isValid }, trigger, getValues, setValue } = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    mode: 'onTouched',
-    defaultValues: {
-      images: []
-    }
+    mode: 'onTouched'
   });
 
   const next = async () => {
@@ -51,7 +50,14 @@ export default function ReportComplaint() {
     if (currentStep === 0) {
       isStepValid = await trigger(['title', 'category', 'description']);
     } else if (currentStep === 1) {
-      isStepValid = await trigger(['images']);
+      // Custom validation for images
+      if (images.length > 5) {
+        setImageError('Maximum 5 images allowed');
+        isStepValid = false;
+      } else {
+        setImageError('');
+        isStepValid = true;
+      }
     } else if (currentStep === 2) {
       isStepValid = await trigger(['location']);
     }
@@ -84,8 +90,8 @@ export default function ReportComplaint() {
         }
       });
       
-      if (data.images && data.images.length > 0) {
-        await ComplaintService.uploadImages(complaint._id, data.images);
+      if (images && images.length > 0) {
+        await ComplaintService.uploadImages(complaint._id, images);
       }
 
       navigate('/dashboard/complaints', { replace: true });
@@ -95,8 +101,6 @@ export default function ReportComplaint() {
       setIsSubmitting(false);
     }
   };
-
-  const currentImages = watch('images') || [];
 
   return (
     <div className="max-w-3xl mx-auto py-8">
@@ -226,10 +230,10 @@ export default function ReportComplaint() {
                     </div>
                     
                     <ImageUploader 
-                      value={currentImages} 
-                      onChange={(files) => setValue('images', files, { shouldValidate: true })} 
+                      value={images} 
+                      onChange={(files) => setImages(files)} 
                     />
-                    {errors.images && <p className="mt-1 text-sm text-red-500 font-medium">{errors.images.message as string}</p>}
+                    {imageError && <p className="mt-1 text-sm text-red-500 font-medium">{imageError}</p>}
                   </div>
                 )}
 
@@ -279,12 +283,12 @@ export default function ReportComplaint() {
                         <p className="text-slate-900 whitespace-pre-wrap text-sm">{getValues('description')}</p>
                       </div>
 
-                      {currentImages.length > 0 && (
+                      {images.length > 0 && (
                         <div>
                           <h4 className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-1">
                             <ImageIcon className="w-4 h-4" /> Evidence
                           </h4>
-                          <p className="text-sm text-slate-700">{currentImages.length} image(s) attached.</p>
+                          <p className="text-sm text-slate-700">{images.length} image(s) attached.</p>
                         </div>
                       )}
                       

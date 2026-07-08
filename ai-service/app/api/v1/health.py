@@ -1,15 +1,12 @@
 from fastapi import APIRouter
-from app.model_registry.registry import registry
+from app.schemas.common import HealthResponse
 
 router = APIRouter()
 
-@router.get("/health")
+@router.get("/health", response_model=HealthResponse)
 def health_check():
-    return {"status": "ok", "service": "ai-engine"}
-
-@router.get("/readiness")
-def readiness_check():
     return {
-        "status": "ready",
-        "models_status": registry.get_status()
+        "status": "ok", 
+        "service": "AI Service",
+        "version": "1.0"
     }
