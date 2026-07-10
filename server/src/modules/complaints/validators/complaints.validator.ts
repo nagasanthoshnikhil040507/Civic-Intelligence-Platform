@@ -62,3 +62,18 @@ export const searchAreaQuerySchema = z.object({
   page: z.string().regex(/^\d+$/).transform(Number).optional().default('1'),
   limit: z.string().regex(/^\d+$/).transform(Number).optional().default('10'),
 });
+
+export const assignComplaintSchema = z.object({
+  officerId: z.string().length(24, 'Invalid officer ID').optional(),
+  departmentId: z.string().length(24, 'Invalid department ID').optional(),
+});
+
+export const updateStatusSchema = z.object({
+  status: z.enum(['pending', 'assigned', 'in_progress', 'resolved', 'closed', 'rejected']),
+  note: z.string().optional(),
+});
+
+export const resolveComplaintSchema = z.object({
+  resolutionNote: z.string().min(10, 'Resolution note must be at least 10 characters').max(2000),
+  workPerformed: z.string().optional(),
+});

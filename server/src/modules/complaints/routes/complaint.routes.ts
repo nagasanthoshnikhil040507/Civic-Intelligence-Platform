@@ -24,6 +24,12 @@ router.delete('/:id', enforceRole([Role.CITIZEN, Role.ADMIN]), ComplaintControll
 
 import { upload } from '../../../middlewares/upload';
 
+// Officer Actions
+router.patch('/:id/assign', enforceRole([Role.OFFICER, Role.ADMIN]), ComplaintController.assign);
+router.patch('/:id/status', enforceRole([Role.OFFICER, Role.ADMIN]), ComplaintController.updateStatus);
+router.post('/:id/resolve', enforceRole([Role.OFFICER, Role.ADMIN]), upload.array('images', 5), ComplaintController.resolve);
+router.post('/:id/analyze', enforceRole([Role.OFFICER, Role.ADMIN]), ComplaintController.analyze);
+
 router.post('/:id/images', 
   enforceRole([Role.CITIZEN, Role.ADMIN]), 
   (req, res, next) => {

@@ -115,6 +115,92 @@ export class ComplaintController {
     }
   }
 
+  static async assign(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { assignComplaintSchema } = require('../validators/complaints.validator');
+      const validatedData = assignComplaintSchema.parse(req.body);
+      const officerId = req.user!.userId; // The one assigning
+
+      let complaint;
+      if (validatedData.departmentId) {
+        complaint = await complaintService.assignDepartment(req.params.id, validatedData.departmentId, officerId);
+      } else if (validatedData.officerId) {
+        complaint = await complaintService.assignOfficer(req.params.id, validatedData.officerId, officerId);
+      } else {
+        throw new ApiError(400, 'Must provide officerId or departmentId');
+      }
+
+      await auditLogService.recordEntityChange('Complaint', req.params.id, 'COMPLAINT_ASSIGNED', [], officerId, req.ip, req.headers['user-agent']);
+      res.status(200).json(new ApiResponse(200, complaint, 'Complaint assigned successfully'));
+    } catch (error) {
+      if (error instanceof ZodError) return next(new ApiError(400, `Validation Error: ${error.errors.map((e:any) => e.message).join(', ')}`));
+      next(error);
+    }
+  }
+
+  static async updateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { updateStatusSchema } = require('../validators/complaints.validator');
+      const validatedData = updateStatusSchema.parse(req.body);
+      const officerId = req.user!.userId;
+
+      // Status transitions validation
+      const existingComplaint = await complaintService.getById(req.params.id);
+      const currentStatus = existingComplaint.status;
+      const newStatus = validatedData.status;
+
+      const validTransitions: Record<string, string[]> = {
+        'pending': ['assigned', 'rejected'],
+        'assigned': ['in_progress'],
+        'in_progress': ['resolved'],
+        'resolved': ['closed'],
+        'closed': [],
+        'rejected': []
+      };
+
+      if (!validTransitions[currentStatus]?.includes(newStatus) && req.user!.role !== 'admin') {
+        throw new ApiError(400, `Invalid status transition from ${currentStatus} to ${newStatus}`);
+      }
+
+      if (req.user!.role !== 'admin') {
+        await complaintService.verifyOfficerAccess(existingComplaint, officerId);
+      }
+
+      const complaint = await complaintService.updateStatus(req.params.id, newStatus, officerId, validatedData.note);
+      await auditLogService.recordEntityChange('Complaint', req.params.id, 'STATUS_UPDATED', [], officerId, req.ip, req.headers['user-agent']);
+      res.status(200).json(new ApiResponse(200, complaint, 'Complaint status updated'));
+    } catch (error) {
+      if (error instanceof ZodError) return next(new ApiError(400, `Validation Error: ${error.errors.map((e:any) => e.message).join(', ')}`));
+      next(error);
+    }
+  }
+
+  static async resolve(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { resolveComplaintSchema } = require('../validators/complaints.validator');
+      const validatedData = resolveComplaintSchema.parse(req.body);
+      const officerId = req.user!.userId;
+
+      const existingComplaint = await complaintService.getById(req.params.id);
+      if (req.user!.role !== 'admin') {
+        await complaintService.verifyOfficerAccess(existingComplaint, officerId);
+      }
+
+      const complaint = await complaintService.resolveComplaint(
+        req.params.id, 
+        officerId, 
+        validatedData.resolutionNote, 
+        req.files as Express.Multer.File[]
+      );
+
+      await auditLogService.recordEntityChange('Complaint', req.params.id, 'COMPLAINT_RESOLVED', [], officerId, req.ip, req.headers['user-agent']);
+      res.status(200).json(new ApiResponse(200, complaint, 'Complaint resolved successfully'));
+    } catch (error) {
+      if (error instanceof ZodError) return next(new ApiError(400, `Validation Error: ${error.errors.map((e:any) => e.message).join(', ')}`));
+      next(error);
+    }
+  }
+
   static async uploadImages(req: Request, res: Response, next: NextFunction) {
     try {
       console.log('--- DEBUG: Incoming image upload request ---');
@@ -213,6 +299,31 @@ export class ComplaintController {
       if (error instanceof ZodError) {
         return next(new ApiError(400, `Validation Error: ${error.errors.map(e => e.message).join(', ')}`));
       }
+      next(error);
+    }
+  }
+  static async analyze(req: Request, res: Response, next: NextFunction) {
+    try {
+      const complaint = await complaintService.getById(req.params.id);
+
+      const { AIService } = require('../../../services/AIService');
+      // Instantiate AIService with existing complaintService
+      const aiService = new AIService(complaintService);
+      
+      const updatedComplaint = await aiService.analyzeComplaint(complaint);
+      
+      await auditLogService.recordEntityChange(
+        'Complaint',
+        req.params.id,
+        'AI_ANALYSIS_COMPLETED',
+        [],
+        req.user!.userId,
+        req.ip,
+        req.headers['user-agent']
+      );
+
+      res.status(200).json(new ApiResponse(200, updatedComplaint, 'AI analysis completed successfully'));
+    } catch (error) {
       next(error);
     }
   }

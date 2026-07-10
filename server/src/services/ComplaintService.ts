@@ -22,9 +22,10 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
       $set: { departmentId },
       $push: { 
         timeline: { 
-          status: 'assigned_department', 
+          status: 'assigned', 
           updatedBy: new Types.ObjectId(assignedBy), 
-          timestamp: new Date() 
+          timestamp: new Date(),
+          note: `Assigned to department ${departmentId}`
         } 
       } 
     } as any, session);
@@ -36,9 +37,10 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
       $push: { 
         assignmentHistory: { officerId, assignedAt: new Date() },
         timeline: { 
-          status: 'assigned_officer', 
+          status: 'assigned', 
           updatedBy: new Types.ObjectId(assignedBy), 
-          timestamp: new Date() 
+          timestamp: new Date(),
+          note: `Assigned to officer ${officerId}`
         } 
       } 
     } as any, session);
@@ -117,6 +119,33 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
     return this.delete(complaintId);
   }
 
+  async verifyOfficerAccess(complaint: any, officerId: string) {
+    const { ApiError } = require('../utils/ApiError');
+    const { Department } = require('../database/models/Department');
+    
+    // Admin always has access
+    // Wait, we don't know if they are admin here, but usually admin doesn't hit this. We assume officer.
+    
+    // Check if directly assigned
+    const isAssigned = complaint.assignmentHistory?.some((a: any) => a.officerId.toString() === officerId);
+    if (isAssigned) return true;
+
+    // Check if in officer's department
+    if (complaint.departmentId) {
+      const department = await Department.findById(complaint.departmentId);
+      if (department && department.officers.includes(new Types.ObjectId(officerId))) {
+        return true;
+      }
+    }
+
+    // If neither assigned directly nor in their department, and it's already claimed/assigned
+    if (complaint.status !== 'pending' && complaint.departmentId) {
+       throw new ApiError(403, 'Forbidden: You cannot edit complaints assigned to other departments');
+    }
+
+    return true;
+  }
+
   async uploadImages(complaintId: string, citizenId: string, files: Express.Multer.File[]) {
     const { ApiError } = require('../utils/ApiError');
     const { CloudinaryUtils } = require('../utils/cloudinary');
@@ -174,6 +203,46 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
 
     return this.update(complaintId, {
       $pull: { images: { publicId: imagePublicId } }
+    } as any);
+  }
+
+  async resolveComplaint(complaintId: string, officerId: string, resolutionNote: string, files?: Express.Multer.File[]) {
+    const { ApiError } = require('../utils/ApiError');
+    const { CloudinaryUtils } = require('../utils/cloudinary');
+    const complaint = await this.getById(complaintId);
+
+    if (complaint.status === 'resolved' || complaint.status === 'closed') {
+      throw new ApiError(400, 'Complaint is already resolved or closed');
+    }
+
+    let proofImages: string[] = [];
+    if (files && files.length > 0) {
+      if (files.length > 5) {
+        throw new ApiError(400, 'Maximum of 5 proof images allowed');
+      }
+      const uploadPromises = files.map(file => CloudinaryUtils.uploadBuffer(file.buffer));
+      const results = await Promise.all(uploadPromises);
+      proofImages = results.map(result => result.secure_url);
+    }
+
+    return this.update(complaintId, {
+      $set: { 
+        status: 'resolved',
+        resolutionDetails: {
+          resolvedAt: new Date(),
+          resolvedBy: new Types.ObjectId(officerId),
+          resolutionNote,
+          proofImages
+        }
+      },
+      $push: {
+        timeline: {
+          status: 'resolved',
+          updatedBy: new Types.ObjectId(officerId),
+          timestamp: new Date(),
+          note: resolutionNote
+        }
+      }
     } as any);
   }
 

@@ -19,6 +19,14 @@ const Profile = lazy(() => import('@/pages/dashboard/Profile'));
 const Settings = lazy(() => import('@/pages/dashboard/Settings'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
+import OfficerLayout from '@/layouts/OfficerLayout';
+
+const OfficerDashboard = lazy(() => import('@/pages/officer/OfficerDashboard'));
+const OfficerComplaints = lazy(() => import('@/pages/officer/AllComplaints'));
+const OfficerAssigned = lazy(() => import('@/pages/officer/AssignedComplaints'));
+const OfficerComplaintDetails = lazy(() => import('@/pages/officer/ComplaintDetails'));
+// const OfficerDepartments = lazy(() => import('@/pages/officer/Departments')); // Coming soon
+
 const withSuspense = (Component: React.ComponentType) => (
   <Suspense fallback={<LoadingScreen />}>
     <Component />
@@ -41,7 +49,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/dashboard',
-    element: <ProtectedRoute />,
+    element: <ProtectedRoute allowedRoles={['citizen']} />,
     children: [
       {
         element: <DashboardLayout />,
@@ -56,6 +64,23 @@ export const router = createBrowserRouter([
         ]
       }
     ],
+  },
+  {
+    path: '/officer',
+    element: <ProtectedRoute allowedRoles={['officer', 'admin']} />,
+    children: [
+      {
+        element: <OfficerLayout />,
+        children: [
+          { index: true, element: withSuspense(OfficerDashboard) },
+          { path: 'complaints', element: withSuspense(OfficerComplaints) },
+          { path: 'assigned', element: withSuspense(OfficerAssigned) },
+          { path: 'complaints/:id', element: withSuspense(OfficerComplaintDetails) },
+          { path: 'profile', element: withSuspense(Profile) },
+          { path: 'settings', element: withSuspense(Settings) },
+        ]
+      }
+    ]
   },
   { path: '*', element: withSuspense(NotFound) },
 ]);

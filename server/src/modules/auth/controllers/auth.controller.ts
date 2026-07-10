@@ -23,11 +23,8 @@ export class AuthController {
    * @desc Registers a new citizen
    */
   static async register(req: Request, res: Response, next: NextFunction) {
-    console.log('[DEBUG] [AuthController.register] Incoming request received');
-    console.log('[DEBUG] [AuthController.register] Body:', req.body);
     try {
       const validatedData = registerSchema.parse(req.body);
-      console.log('[DEBUG] [AuthController.register] Validation passed:', validatedData);
       
       const payload = {
         ...validatedData,
@@ -36,12 +33,9 @@ export class AuthController {
         userAgent: req.headers['user-agent']
       };
 
-      console.log('[DEBUG] [AuthController.register] Calling AuthService.registerCitizen');
       const user = await authService.registerCitizen(payload, userService, auditLogService);
-      console.log('[DEBUG] [AuthController.register] User created successfully:', user);
 
       const tokens = authService.generateTokens({ userId: (user as any)._id || (user as any).id, role: user.role });
-      console.log('[DEBUG] [AuthController.register] Tokens generated');
 
       // Set Secure Cookies
       res.cookie('refreshToken', tokens.refreshToken, SecurityConfig.cookie);
@@ -55,15 +49,19 @@ export class AuthController {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken
       }, 'User registered successfully. Please verify your email.');
-      console.log('[DEBUG] [AuthController.register] Returning response:', responsePayload);
       
       return res.status(201).json(responsePayload);
     } catch (error) {
-      console.error('[DEBUG] [AuthController.register] Exception caught:', error);
       if (error instanceof ZodError) {
-        const errors = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-        console.error('[DEBUG] [AuthController.register] ZodError:', errors);
-        return next(new ApiError(400, `Validation Error: ${errors}`));
+        const firstError = error.errors[0];
+        let msg = firstError.message;
+        if (firstError.path.length > 0) {
+          msg = `${firstError.path[0].toString().charAt(0).toUpperCase() + firstError.path[0].toString().slice(1)} is required`;
+          if (firstError.message !== 'Required') {
+             msg = `${firstError.path[0].toString().charAt(0).toUpperCase() + firstError.path[0].toString().slice(1)}: ${firstError.message}`;
+          }
+        }
+        return res.status(400).json({ success: false, message: msg });
       }
       next(error);
     }
@@ -74,11 +72,8 @@ export class AuthController {
    * @desc Authenticates a user and returns tokens
    */
   static async login(req: Request, res: Response, next: NextFunction) {
-    console.log('[DEBUG] [AuthController.login] Incoming request received');
-    console.log('[DEBUG] [AuthController.login] Body:', { ...req.body, password: '[REDACTED]' });
     try {
       const validatedData = loginSchema.parse(req.body);
-      console.log('[DEBUG] [AuthController.login] Validation passed');
 
       const payload = {
         email: validatedData.email,
@@ -87,9 +82,7 @@ export class AuthController {
         userAgent: req.headers['user-agent']
       };
 
-      console.log('[DEBUG] [AuthController.login] Calling AuthService.loginUser');
       const result = await authService.loginUser(payload, userService, auditLogService);
-      console.log('[DEBUG] [AuthController.login] loginUser succeeded');
 
       // Set Secure Cookies
       res.cookie('refreshToken', result.tokens.refreshToken, SecurityConfig.cookie);
@@ -104,14 +97,18 @@ export class AuthController {
         refreshToken: result.tokens.refreshToken 
       }, 'Login successful');
       
-      console.log('[DEBUG] [AuthController.login] Returning response');
       return res.status(200).json(responsePayload);
     } catch (error) {
-      console.error('[DEBUG] [AuthController.login] Exception caught:', error);
       if (error instanceof ZodError) {
-        const errors = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-        console.error('[DEBUG] [AuthController.login] ZodError:', errors);
-        return next(new ApiError(400, `Validation Error: ${errors}`));
+        const firstError = error.errors[0];
+        let msg = firstError.message;
+        if (firstError.path.length > 0) {
+          msg = `${firstError.path[0].toString().charAt(0).toUpperCase() + firstError.path[0].toString().slice(1)} is required`;
+          if (firstError.message !== 'Required') {
+             msg = `${firstError.path[0].toString().charAt(0).toUpperCase() + firstError.path[0].toString().slice(1)}: ${firstError.message}`;
+          }
+        }
+        return res.status(400).json({ success: false, message: msg });
       }
       next(error);
     }

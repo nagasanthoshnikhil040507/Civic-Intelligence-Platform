@@ -39,6 +39,17 @@ export interface IComplaint extends Document {
     proofImages: string[];
     resolutionNote: string;
   };
+  aiAnalysis?: {
+    categoryPrediction?: string;
+    confidence?: number;
+    severity?: number;
+    roadDamage?: string;
+    garbageDetected?: boolean;
+    sentiment?: string;
+    recommendations?: string[];
+    processingStatus?: string;
+    analyzedAt?: Date;
+  };
   tags: string[];
   attachments: string[];
   isDeleted: boolean;
@@ -100,6 +111,17 @@ const complaintSchema = new Schema<IComplaint>(
       resolvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
       proofImages: [{ type: String }],
       resolutionNote: { type: String },
+    },
+    aiAnalysis: {
+      categoryPrediction: { type: String },
+      confidence: { type: Number },
+      severity: { type: Number },
+      roadDamage: { type: String },
+      garbageDetected: { type: Boolean },
+      sentiment: { type: String },
+      recommendations: [{ type: String }],
+      processingStatus: { type: String },
+      analyzedAt: { type: Date }
     },
     tags: [{ type: String }],
     attachments: [{ type: String }],
