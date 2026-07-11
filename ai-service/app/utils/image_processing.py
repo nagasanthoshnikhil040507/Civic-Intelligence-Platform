@@ -1,70 +1,109 @@
+import os
 import cv2
 import numpy as np
+import logging
+from typing import Tuple
+
 from app.utils.logger import logger
 
-class ImageProcessor:
+def load_image(file_path: str) -> np.ndarray:
     """
-    Utility class for standardizing image preprocessing before AI inference.
-    """
+    Loads an image from a file path using OpenCV.
     
-    @staticmethod
-    def read_image_from_bytes(image_bytes: bytes) -> np.ndarray:
-        """
-        Converts raw bytes to an OpenCV image (numpy array).
-        """
-        try:
-            nparr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if img is None:
-                raise ValueError("Could not decode image bytes")
-            return img
-        except Exception as e:
-            logger.error(f"Error reading image from bytes: {e}")
-            raise
-
-    @staticmethod
-    def resize_image(image: np.ndarray, target_size: tuple = (224, 224)) -> np.ndarray:
-        """
-        Resizes an image to the target dimensions (default 224x224 for standard CNNs).
-        """
-        try:
-            return cv2.resize(image, target_size, interpolation=cv2.INTER_AREA)
-        except Exception as e:
-            logger.error(f"Error resizing image: {e}")
-            raise
-
-    @staticmethod
-    def convert_color_space(image: np.ndarray, code=cv2.COLOR_BGR2RGB) -> np.ndarray:
-        """
-        Converts color space (e.g., BGR to RGB). OpenCV uses BGR by default, 
-        but most ML models expect RGB.
-        """
-        try:
-            return cv2.cvtColor(image, code)
-        except Exception as e:
-            logger.error(f"Error converting color space: {e}")
-            raise
-
-    @staticmethod
-    def normalize_image(image: np.ndarray) -> np.ndarray:
-        """
-        Normalizes pixel values to the range [0, 1].
-        """
-        try:
-            return image.astype(np.float32) / 255.0
-        except Exception as e:
-            logger.error(f"Error normalizing image: {e}")
-            raise
-
-    @classmethod
-    def preprocess_for_model(cls, image_bytes: bytes, target_size: tuple = (224, 224)) -> np.ndarray:
-        """
-        Complete preprocessing pipeline: Read -> Resize -> Color Convert -> Normalize.
-        """
-        img = cls.read_image_from_bytes(image_bytes)
-        img = cls.resize_image(img, target_size)
-        img = cls.convert_color_space(img)
-        img = cls.normalize_image(img)
+    Args:
+        file_path (str): The absolute or relative path to the image file.
         
-        # Add batch dimension: (H, W, C) -> (1, H, W, C)
-        return np.expand_dims(img, axis=0)
+    Returns:
+        np.ndarray: The loaded image as a NumPy array (BGR format).
+        
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file is not a valid image format or cannot be decoded.
+    """
+    if not os.path.exists(file_path):
+        logger.error(f"File not found: {file_path}")
+        raise FileNotFoundError(f"File not found: {file_path}")
+        
+    try:
+        # cv2.imread returns None if the image cannot be read or is invalid
+        image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError(f"Invalid image format or cannot decode image at {file_path}")
+        return image
+    except Exception as e:
+        logger.error(f"Error loading image from {file_path}: {e}")
+        raise
+
+def resize_image(image: np.ndarray, target_size: Tuple[int, int] = (224, 224)) -> np.ndarray:
+    """
+    Resizes an image to the target dimensions.
+    
+    Args:
+        image (np.ndarray): The input image.
+        target_size (tuple): The desired target size as (width, height). Default is (224, 224).
+        
+    Returns:
+        np.ndarray: The resized image.
+    """
+    try:
+        resized_image = cv2.resize(image, target_size, interpolation=cv2.INTER_AREA)
+        return resized_image
+    except Exception as e:
+        logger.error(f"Error resizing image to {target_size}: {e}")
+        raise
+
+def normalize_image(image: np.ndarray) -> np.ndarray:
+    """
+    Normalizes image pixel values to the range [0, 1].
+    
+    Args:
+        image (np.ndarray): The input image array.
+        
+    Returns:
+        np.ndarray: The normalized image array with float32 data type.
+    """
+    try:
+        normalized_image = image.astype(np.float32) / 255.0
+        return normalized_image
+    except Exception as e:
+        logger.error(f"Error normalizing image: {e}")
+        raise
+
+def preprocess_image(file_path: str, target_size: Tuple[int, int] = (224, 224), expand_dims: bool = True) -> np.ndarray:
+    """
+    Complete preprocessing pipeline for an image file.
+    Reads the image, converts BGR to RGB, resizes, normalizes, and optionally expands dimensions.
+    
+    Args:
+        file_path (str): The path to the image file.
+        target_size (tuple): The target resizing dimensions. Default is (224, 224).
+        expand_dims (bool): Whether to expand dimensions to create a batch (e.g., shape (1, H, W, C)). Default is True.
+        
+    Returns:
+        np.ndarray: The preprocessed image tensor ready for model inference.
+    """
+    try:
+        # 1. Load image (BGR by default in OpenCV)
+        image = load_image(file_path)
+        
+        # 2. Convert BGR to RGB
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # 3. Resize image
+        image_resized = resize_image(image_rgb, target_size)
+        
+        # 4. Normalize pixel values
+        image_normalized = normalize_image(image_resized)
+        
+        # 5. Expand dimensions to create a batch if requested
+        if expand_dims:
+            image_tensor = np.expand_dims(image_normalized, axis=0)
+        else:
+            image_tensor = image_normalized
+            
+        logger.info(f"Successfully preprocessed image: {file_path}. Final shape: {image_tensor.shape}")
+        return image_tensor
+        
+    except Exception as e:
+        logger.error(f"Preprocessing pipeline failed for image {file_path}: {e}")
+        raise

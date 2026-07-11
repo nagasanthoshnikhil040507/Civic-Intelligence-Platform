@@ -24,6 +24,7 @@ export default function OfficerComplaintDetails() {
   const [workPerformed, setWorkPerformed] = useState('');
   const [resolutionImages, setResolutionImages] = useState<File[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   const handleAnalyzeComplaint = async () => {
     if (!id) return;
@@ -31,8 +32,11 @@ export default function OfficerComplaintDetails() {
       setIsAnalyzing(true);
       await ComplaintService.analyzeComplaint(id);
       await fetchComplaint();
+      setToast({ message: 'Analysis complete!', type: 'success' });
+      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to analyze complaint');
+      setToast({ message: err.response?.data?.message || 'Failed to analyze complaint', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
     } finally {
       setIsAnalyzing(false);
     }
@@ -183,6 +187,13 @@ export default function OfficerComplaintDetails() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500 pb-12 relative">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg font-medium text-sm animate-in slide-in-from-bottom-2 ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Header Actions */}
       <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200 sticky top-4 z-10">
         <button 
@@ -339,7 +350,7 @@ export default function OfficerComplaintDetails() {
               Automated image classification, priority scoring, and text sentiment analysis.
             </p>
             
-            {complaint.aiAnalysis ? (
+            {complaint.aiAnalysis && complaint.aiAnalysis.analyzedAt ? (
               <div className="space-y-3 bg-slate-800 p-4 rounded-xl border border-slate-700">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-700">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status</span>

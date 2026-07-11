@@ -8,7 +8,10 @@ export class AIService {
   private readonly complaintService: ComplaintService;
 
   constructor(complaintService: ComplaintService) {
-    this.fastApiUrl = config.aiServiceUrl || 'http://localhost:8000';
+    // FIX: Node 18+ resolves localhost to IPv6 (::1) but Uvicorn binds to IPv4 (127.0.0.1) by default.
+    // Replace 'localhost' with '127.0.0.1' to prevent ECONNREFUSED errors.
+    const aiUrl = config.aiServiceUrl || 'http://127.0.0.1:8000';
+    this.fastApiUrl = aiUrl.replace('localhost', '127.0.0.1');
     this.complaintService = complaintService;
   }
 
