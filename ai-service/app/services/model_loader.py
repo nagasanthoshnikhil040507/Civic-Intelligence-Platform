@@ -20,7 +20,8 @@ class ModelLoader:
                 cls._instance.label_mappings = {}
                 # Configure the base model directory using pathlib (resolves to ai-service/trained_models)
                 cls._instance.model_dir = Path(__file__).parent.parent.parent / "trained_models"
-                cls._instance.is_initialized = False        return cls._instance
+                cls._instance.is_initialized = False
+        return cls._instance
         
     def __init__(self):
         with self._lock:

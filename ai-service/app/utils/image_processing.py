@@ -2,36 +2,51 @@ import os
 import cv2
 import numpy as np
 import logging
+import requests
 from typing import Tuple
 
 from app.utils.logger import logger
 
 def load_image(file_path: str) -> np.ndarray:
     """
-    Loads an image from a file path using OpenCV.
+    Loads an image from a file path or URL using OpenCV.
     
     Args:
-        file_path (str): The absolute or relative path to the image file.
+        file_path (str): The absolute/relative path or URL to the image file.
         
     Returns:
         np.ndarray: The loaded image as a NumPy array (BGR format).
         
     Raises:
-        FileNotFoundError: If the file does not exist.
+        FileNotFoundError: If the file does not exist or URL cannot be fetched.
         ValueError: If the file is not a valid image format or cannot be decoded.
     """
-    if not os.path.exists(file_path):
-        logger.error(f"File not found: {file_path}")
-        raise FileNotFoundError(f"File not found: {file_path}")
-        
     try:
-        # cv2.imread returns None if the image cannot be read or is invalid
-        image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+        if file_path.startswith("http://") or file_path.startswith("https://"):
+            logger.info(f"Downloading image from URL: {file_path}")
+            response = requests.get(file_path, timeout=10)
+            response.raise_for_status()
+            
+            # Decode the image directly from memory
+            image_array = np.frombuffer(response.content, np.uint8)
+            image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+        else:
+            if not os.path.exists(file_path):
+                logger.error(f"File not found: {file_path}")
+                raise FileNotFoundError(f"File not found: {file_path}")
+                
+            # cv2.imread returns None if the image cannot be read or is invalid
+            image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+            
         if image is None:
             raise ValueError(f"Invalid image format or cannot decode image at {file_path}")
         return image
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch image from URL {file_path}: {e}")
+        raise FileNotFoundError(f"Failed to fetch image from URL: {file_path}")
     except Exception as e:
-        logger.error(f"Error loading image from {file_path}: {e}")
+        if not isinstance(e, FileNotFoundError):
+            logger.error(f"Error loading image from {file_path}: {e}")
         raise
 
 def resize_image(image: np.ndarray, target_size: Tuple[int, int] = (224, 224)) -> np.ndarray:
