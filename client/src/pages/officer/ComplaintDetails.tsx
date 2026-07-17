@@ -360,36 +360,45 @@ export default function OfficerComplaintDetails() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Category</p>
-                    <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.categoryPrediction || 'N/A'}</p>
+                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.categoryPrediction?.replace('_', ' ') || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Confidence</p>
                     <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.confidence ? `${(complaint.aiAnalysis.confidence * 100).toFixed(1)}%` : 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Severity Score</p>
-                    <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.severity || 'N/A'}/100</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Severity</p>
+                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.severity || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Damage Type</p>
-                    <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.roadDamage || 'N/A'}</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Priority</p>
+                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.priority || 'N/A'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Sentiment</p>
-                    <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.sentiment || 'N/A'}</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Department Recommendation</p>
+                    <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.departmentRecommendation || 'N/A'}</p>
                   </div>
+                  <div className="col-span-2 border-t border-slate-700 pt-2">
+                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Duplicate Detection</p>
+                    {complaint.aiAnalysis.duplicateDetected ? (
+                      <div>
+                        <p className="text-sm font-medium text-red-400">Duplicate Found</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Matched ID: {complaint.aiAnalysis.matchedComplaintId} <br/>
+                          Similarity: {complaint.aiAnalysis.similarity ? `${(complaint.aiAnalysis.similarity * 100).toFixed(1)}%` : 'N/A'}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium text-green-400">No Duplicates Detected</p>
+                    )}
+                  </div>
+                  {complaint.aiAnalysis.message && (
+                    <div className="col-span-2 border-t border-slate-700 pt-2">
+                      <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Message</p>
+                      <p className="text-xs text-slate-300">{complaint.aiAnalysis.message}</p>
+                    </div>
+                  )}
                 </div>
-
-                {complaint.aiAnalysis.recommendations && complaint.aiAnalysis.recommendations.length > 0 && (
-                  <div className="pt-2 border-t border-slate-700">
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-2">Recommendations</p>
-                    <ul className="list-disc pl-4 space-y-1">
-                      {complaint.aiAnalysis.recommendations.map((rec: string, i: number) => (
-                        <li key={i} className="text-xs text-slate-300">{rec}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
                 
                 {complaint.aiAnalysis.analyzedAt && (
                   <div className="pt-2 border-t border-slate-700 text-right">
@@ -456,8 +465,8 @@ export default function OfficerComplaintDetails() {
               
               const timelineNodes = complaint.status === 'rejected' 
                 ? [
-                    { status: 'pending', display: 'Complaint Received', done: true, time: events.find(e => e.status === 'pending')?.timestamp || complaint.createdAt },
-                    { status: 'rejected', display: 'Case Rejected', done: true, time: events.find(e => e.status === 'rejected')?.timestamp || complaint.updatedAt }
+                    { status: 'pending', display: 'Complaint Received', done: true, current: false, note: null, time: events.find(e => e.status === 'pending')?.timestamp || complaint.createdAt },
+                    { status: 'rejected', display: 'Case Rejected', done: true, current: true, note: null, time: events.find(e => e.status === 'rejected')?.timestamp || complaint.updatedAt }
                   ]
                 : statusProgression.map((status, index) => {
                     const event = events.find(e => e.status === status) || [...events].reverse().find(e => statusProgression.indexOf(e.status) >= index);

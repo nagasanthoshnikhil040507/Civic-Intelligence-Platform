@@ -15,13 +15,15 @@ export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (!isAuthenticated) {
+    if (location.pathname.startsWith('/officer')) {
+      return <Navigate to="/officer/login" state={{ from: location }} replace />;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // If authenticated but wrong role, redirect to their appropriate dashboard
-    const fallbackPath = user.role === 'officer' ? '/officer' : '/dashboard';
-    return <Navigate to={fallbackPath} replace />;
+    // If authenticated but wrong role, redirect to unauthorized
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <Outlet />;

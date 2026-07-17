@@ -10,6 +10,7 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1, 'Password is required'),
+  expectedRole: z.enum(['officer', 'citizen', 'admin']).optional(),
 });
 
 export const refreshTokenSchema = z.object({

@@ -18,8 +18,10 @@ const Analytics = lazy(() => import('@/pages/dashboard/Analytics'));
 const Profile = lazy(() => import('@/pages/dashboard/Profile'));
 const Settings = lazy(() => import('@/pages/dashboard/Settings'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const Unauthorized = lazy(() => import('@/pages/Unauthorized'));
 
 import OfficerLayout from '@/layouts/OfficerLayout';
+const OfficerLogin = lazy(() => import('@/pages/auth/OfficerLogin'));
 
 const OfficerDashboard = lazy(() => import('@/pages/officer/OfficerDashboard'));
 const OfficerComplaints = lazy(() => import('@/pages/officer/AllComplaints'));
@@ -47,6 +49,11 @@ export const router = createBrowserRouter([
       { path: '/register', element: withSuspense(Register) },
     ],
   },
+  {
+    path: '/officer/login',
+    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(OfficerLogin)}</div>,
+  },
+  { path: '/unauthorized', element: withSuspense(Unauthorized) },
   {
     path: '/dashboard',
     element: <ProtectedRoute allowedRoles={['citizen']} />,

@@ -84,6 +84,13 @@ export class AuthController {
 
       const result = await authService.loginUser(payload, userService, auditLogService);
 
+      // Validate Expected Role if provided
+      if (validatedData.expectedRole) {
+        if (validatedData.expectedRole === 'officer' && result.user.role !== 'officer' && result.user.role !== 'admin') {
+          return next(new ApiError(403, 'Access denied. Officer account required.'));
+        }
+      }
+
       // Set Secure Cookies
       res.cookie('refreshToken', result.tokens.refreshToken, SecurityConfig.cookie);
       res.cookie('accessToken', result.tokens.accessToken, {

@@ -43,13 +43,16 @@ export interface IComplaint extends Document {
   aiAnalysis?: {
     categoryPrediction?: string;
     confidence?: number;
-    severity?: number;
-    roadDamage?: string;
-    garbageDetected?: boolean;
-    sentiment?: string;
-    recommendations?: string[];
+    severity?: string;
+    priority?: string;
+    departmentRecommendation?: string;
+    duplicateDetected?: boolean;
+    matchedComplaintId?: Types.ObjectId;
+    similarity?: number;
     processingStatus?: string;
     analyzedAt?: Date;
+    message?: string;
+    totalInferenceTimeMs?: number;
   };
   tags: string[];
   attachments: string[];
@@ -116,13 +119,16 @@ const complaintSchema = new Schema<IComplaint>(
     aiAnalysis: {
       categoryPrediction: { type: String },
       confidence: { type: Number },
-      severity: { type: Number },
-      roadDamage: { type: String },
-      garbageDetected: { type: Boolean },
-      sentiment: { type: String },
-      recommendations: [{ type: String }],
+      severity: { type: String },
+      priority: { type: String },
+      departmentRecommendation: { type: String },
+      duplicateDetected: { type: Boolean },
+      matchedComplaintId: { type: Schema.Types.ObjectId, ref: 'Complaint' },
+      similarity: { type: Number },
       processingStatus: { type: String },
-      analyzedAt: { type: Date }
+      analyzedAt: { type: Date },
+      message: { type: String },
+      totalInferenceTimeMs: { type: Number }
     },
     tags: [{ type: String }],
     attachments: [{ type: String }],

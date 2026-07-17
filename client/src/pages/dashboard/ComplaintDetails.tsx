@@ -272,8 +272,8 @@ export default function ComplaintDetails() {
               
               const timelineNodes = complaint.status === 'rejected' 
                 ? [
-                    { status: 'pending', display: 'Complaint Submitted', done: true, time: events.find(e => e.status === 'pending')?.timestamp || complaint.createdAt },
-                    { status: 'rejected', display: 'Rejected', done: true, time: events.find(e => e.status === 'rejected')?.timestamp || complaint.updatedAt }
+                    { status: 'pending', display: 'Complaint Submitted', done: true, current: false, note: null, time: events.find(e => e.status === 'pending')?.timestamp || complaint.createdAt },
+                    { status: 'rejected', display: 'Rejected', done: true, current: true, note: null, time: events.find(e => e.status === 'rejected')?.timestamp || complaint.updatedAt }
                   ]
                 : statusProgression.map((status, index) => {
                     const event = events.find(e => e.status === status) || events.reverse().find(e => statusProgression.indexOf(e.status) >= index);

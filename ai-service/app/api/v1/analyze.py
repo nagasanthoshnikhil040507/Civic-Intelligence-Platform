@@ -23,7 +23,10 @@ classification_pipeline = ImageClassificationPipeline(model_name="civic_classifi
 severity_pipeline = SeverityPredictionPipeline(model_name="severity_prediction")
 priority_pipeline = PriorityPredictionPipeline(model_name="priority_prediction")
 department_pipeline = DepartmentRecommendationPipeline()
-duplicate_pipeline = DuplicateComplaintDetectionPipeline()
+from app.config.settings import get_settings
+settings = get_settings()
+
+duplicate_pipeline = DuplicateComplaintDetectionPipeline(db_uri=settings.MONGO_URI, db_name=settings.DB_NAME)
 
 @router.post("/analyze")
 async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
@@ -76,7 +79,7 @@ async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
         }
     else:
         try:
-            duplicate_result = duplicate_pipeline.run(image_path, float(latitude), float(longitude))
+            duplicate_result = duplicate_pipeline.run(request.imageUrls, float(latitude), float(longitude), request.complaintId)
         except Exception as e:
             logger.error(f"Duplicate pipeline execution failed: {e}")
             duplicate_result = {

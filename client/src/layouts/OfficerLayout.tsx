@@ -10,7 +10,7 @@ export default function OfficerLayout() {
 
   const handleLogout = async () => {
     await AuthService.logout();
-    navigate('/login');
+    navigate('/officer/login');
   };
 
   const navItems = [

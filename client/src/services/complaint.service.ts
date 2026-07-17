@@ -16,6 +16,7 @@ export interface CreateComplaintPayload {
 
 export interface ComplaintResponse {
   _id: string;
+  citizenId?: string;
   title: string;
   description: string;
   category: string;
@@ -42,13 +43,16 @@ export interface ComplaintResponse {
   aiAnalysis?: {
     categoryPrediction?: string;
     confidence?: number;
-    severity?: number;
-    roadDamage?: string;
-    garbageDetected?: boolean;
-    sentiment?: string;
-    recommendations?: string[];
+    severity?: string;
+    priority?: string;
+    departmentRecommendation?: string;
+    duplicateDetected?: boolean;
+    matchedComplaintId?: string;
+    similarity?: number;
     processingStatus?: string;
     analyzedAt?: string;
+    message?: string;
+    totalInferenceTimeMs?: number;
   };
   priority?: string;
   departmentId?: string;
