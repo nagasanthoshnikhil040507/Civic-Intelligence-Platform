@@ -27,34 +27,40 @@ class SeverityPredictionPipeline:
         """
         status = classification_result.get("processingStatus")
         
-        # If upstream failed or didn't have a model, skip calculation
-        if status in ["FAILED", "MODEL_NOT_AVAILABLE"]:
+        # Propagate upstream failures or missing models
+        if status != "completed":
             logger.info(f"Skipping severity prediction due to upstream status: {status}")
             return {
                 "processingStatus": status,
-                "message": classification_result.get("message", "Upstream pipeline failed.")
-            }
-
-        model = model_loader.get_model(self.model_name)
-        
-        if model is None:
-            logger.warning(f"Severity model '{self.model_name}' is not available.")
-            return {
-                "processingStatus": "SEVERITY_MODEL_NOT_AVAILABLE",
-                "message": "Severity TensorFlow model has not been trained yet."
+                "message": classification_result.get("message", "Upstream pipeline not completed.")
             }
 
         try:
-            logger.info(f"Running severity inference using model '{self.model_name}'...")
+            logger.info(f"Running severity inference using rule-based engine...")
             
-            # STRICT RULE: Do NOT call TensorFlow predict().
-            # STRICT RULE: Do NOT perform inference.
-            # When ready, this block will evaluate the image/features:
-            # severity = model.predict(...)
+            category = classification_result.get("categoryPrediction", "")
+            confidence = classification_result.get("confidence", 0.0)
+            is_duplicate = classification_result.get("duplicateDetected", False)
+            
+            # Configurable decision rules
+            severity = "low"
+            if category == "water_leakage":
+                severity = "critical"
+            elif category == "road_damage":
+                severity = "high"
+            elif category == "garbage":
+                severity = "medium"
+            elif category == "street_light":
+                severity = "low"
+                
+            # If a duplicate is detected or similarity is high, log it for future NLP model tuning
+            if is_duplicate:
+                logger.info("Duplicate complaint detected; applying standard severity regardless.")
             
             return {
-                "processingStatus": "INFERENCE_NOT_IMPLEMENTED",
-                "message": "Model is loaded, but severity inference logic is strictly disabled in this phase."
+                "processingStatus": "completed",
+                "severity": severity,
+                "message": "Severity predicted using rule-based engine."
             }
         except Exception as e:
             logger.error(f"Severity inference error: {e}")
@@ -83,7 +89,10 @@ class SeverityPredictionPipeline:
             
             # 2. Merge results retaining aiAnalysis compatibility
             merged = classification_result.copy()
-            merged["processingStatus"] = inference_result.get("processingStatus", "FAILED")
+            merged["processingStatus"] = inference_result.get("processingStatus", classification_result.get("processingStatus"))
+            
+            if "severity" in inference_result:
+                merged["severity"] = inference_result["severity"]
             
             new_msg = inference_result.get("message")
             if new_msg:

@@ -22,10 +22,18 @@ export class AIService {
       // 2. Collect complaint images
       const imageUrls = complaint.images?.map((img: any) => img.url) || [];
 
-      // 3. Send image URLs to FastAPI (with 1 retry and timeout)
+      // 3. Extract parameters without mutating schema
+      const latitude = complaint.location?.coordinates?.[1] || null;
+      const longitude = complaint.location?.coordinates?.[0] || null;
+      const description = complaint.description || "";
+
+      // 4. Send image URLs and metadata to FastAPI (with 1 retry and timeout)
       const prediction = await this.callFastApiWithRetry('/api/v1/analyze', {
         complaintId,
-        imageUrls
+        imageUrls,
+        latitude,
+        longitude,
+        description
       }, 1, 5000);
 
       // 5. Store prediction inside MongoDB
@@ -41,6 +49,18 @@ export class AIService {
       // 6. Return prediction
       return updatedComplaint;
     } catch (error: any) {
+      console.error(`[AIService] AI analysis failed for ${complaint._id}:`, error.message || error);
+      try {
+        await this.complaintService.updateComplaint(complaint._id.toString(), {
+          $set: {
+            'aiAnalysis.processingStatus': 'FAILED',
+            'aiAnalysis.analyzedAt': new Date()
+          }
+        } as any);
+      } catch (dbError) {
+        console.error(`[AIService] Failed to update processingStatus for ${complaint._id}:`, dbError);
+      }
+      // Re-throw if caller wants to handle it, though background tasks will swallow it
       this.handleAiError(error);
     }
   }

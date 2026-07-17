@@ -23,6 +23,7 @@ export interface IComplaint extends Document {
     type: 'Point';
     coordinates: [number, number]; // [longitude, latitude]
   };
+  address?: string;
   timeline: Array<{
     status: string;
     updatedBy: Types.ObjectId;

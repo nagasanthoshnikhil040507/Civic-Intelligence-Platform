@@ -28,32 +28,33 @@ class PriorityPredictionPipeline:
         status = severity_result.get("processingStatus")
         
         # Propagate upstream failures or missing models
-        if status in ["FAILED", "MODEL_NOT_AVAILABLE", "SEVERITY_MODEL_NOT_AVAILABLE"]:
+        if status != "completed":
             logger.info(f"Skipping priority prediction due to upstream status: {status}")
             return {
                 "processingStatus": status,
-                "message": severity_result.get("message", "Upstream pipeline failed or model missing.")
-            }
-
-        # Check if Priority model exists
-        model = model_loader.get_model(self.model_name)
-        
-        if model is None:
-            logger.warning(f"Priority model '{self.model_name}' is not available.")
-            return {
-                "processingStatus": "PRIORITY_MODEL_NOT_AVAILABLE",
-                "message": "Priority TensorFlow model has not been trained yet."
+                "message": severity_result.get("message", "Upstream pipeline not completed.")
             }
 
         try:
-            logger.info(f"Running priority inference using model '{self.model_name}'...")
+            logger.info(f"Running priority inference using rule-based engine...")
             
-            # STRICT RULE: Do NOT call TensorFlow predict().
-            # STRICT RULE: Do NOT perform inference.
+            severity = severity_result.get("severity", "low")
+            
+            # Configurable decision rules
+            priority = "low"
+            if severity == "critical":
+                priority = "urgent"
+            elif severity == "high":
+                priority = "high"
+            elif severity == "medium":
+                priority = "medium"
+            elif severity == "low":
+                priority = "low"
             
             return {
-                "processingStatus": "INFERENCE_NOT_IMPLEMENTED",
-                "message": "Model is loaded, but priority inference logic is strictly disabled in this phase."
+                "processingStatus": "completed",
+                "priority": priority,
+                "message": "Priority predicted using rule-based engine."
             }
         except Exception as e:
             logger.error(f"Priority inference error: {e}")
@@ -82,7 +83,10 @@ class PriorityPredictionPipeline:
             
             # 2. Merge results retaining aiAnalysis compatibility
             merged = severity_result.copy()
-            merged["processingStatus"] = inference_result.get("processingStatus", "FAILED")
+            merged["processingStatus"] = inference_result.get("processingStatus", severity_result.get("processingStatus"))
+            
+            if "priority" in inference_result:
+                merged["priority"] = inference_result["priority"]
             
             new_msg = inference_result.get("message")
             if new_msg:

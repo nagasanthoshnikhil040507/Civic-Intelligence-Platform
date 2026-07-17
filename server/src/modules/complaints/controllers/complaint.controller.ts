@@ -33,6 +33,7 @@ export class ComplaintController {
       );
 
       res.status(201).json(new ApiResponse(201, complaint, 'Complaint created successfully'));
+
     } catch (error) {
       if (error instanceof ZodError) {
         return next(new ApiError(400, `Validation Error: ${error.errors.map(e => e.message).join(', ')}`));
@@ -234,6 +235,18 @@ export class ComplaintController {
       );
 
       res.status(200).json(new ApiResponse(200, complaint, 'Images uploaded successfully'));
+
+      // Trigger AI Analysis in the background (Non-blocking) ONLY after images are uploaded
+      try {
+        const { AIService } = require('../../../services/AIService');
+        const aiService = new AIService(complaintService);
+        aiService.analyzeComplaint(complaint).catch((err: any) => {
+          // Errors are already logged and handled inside AIService
+          // We just catch them here to prevent UnhandledPromiseRejection
+        });
+      } catch (aiError) {
+        console.error('[ComplaintController] Failed to initialize background AI service:', aiError);
+      }
     } catch (error: any) {
       console.error('--- DEBUG: Error in uploadImages ---');
       console.error('Stack trace:', error.stack || error);

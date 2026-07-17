@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import patch, MagicMock
 from app.pipelines.priority_prediction.pipeline import PriorityPredictionPipeline
 
 @pytest.fixture
@@ -47,42 +46,6 @@ def test_invalid_input_handling(pipeline):
     with pytest.raises(ValueError, match="Input to priority prediction must be a dictionary."):
         pipeline.run(["this is a list"])
 
-@patch("app.pipelines.priority_prediction.pipeline.model_loader")
-def test_priority_model_not_available(mock_loader, pipeline):
-    """Verify pipeline returns PRIORITY_MODEL_NOT_AVAILABLE when missing."""
-    mock_loader.get_model.return_value = None
-    
-    input_data = {
-        "processingStatus": "INFERENCE_NOT_IMPLEMENTED",
-        "categoryPrediction": "water_leakage",
-        "severity": "high"
-    }
-    
-    result = pipeline.run(input_data)
-    
-    assert result["processingStatus"] == "PRIORITY_MODEL_NOT_AVAILABLE"
-    assert "Priority TensorFlow model has not been trained yet" in result["message"]
-    mock_loader.get_model.assert_called_once_with("test_priority")
-
-@patch("app.pipelines.priority_prediction.pipeline.model_loader")
-def test_no_tensorflow_inference_occurs(mock_loader, pipeline):
-    """Verify No TensorFlow inference occurs even if model is loaded."""
-    mock_model = MagicMock()
-    mock_loader.get_model.return_value = mock_model
-    
-    input_data = {
-        "processingStatus": "INFERENCE_NOT_IMPLEMENTED",
-        "categoryPrediction": "water_leakage",
-        "severity": "high"
-    }
-    
-    result = pipeline.run(input_data)
-    
-    # Model predict must NOT be called
-    mock_model.predict.assert_not_called()
-    assert result["processingStatus"] == "INFERENCE_NOT_IMPLEMENTED"
-    assert "priority inference logic is strictly disabled" in result["message"]
-
 def test_structured_output(pipeline):
     """Verify Structured output compatibility with aiAnalysis schema."""
     input_data = {
@@ -97,3 +60,39 @@ def test_structured_output(pipeline):
     assert result["categoryPrediction"] == "street_light"
     assert "analyzedAt" in result
     assert "processingStatus" in result
+
+def test_priority_urgent(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "severity": "critical"
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["priority"] == "urgent"
+
+def test_priority_high(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "severity": "high"
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["priority"] == "high"
+
+def test_priority_medium(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "severity": "medium"
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["priority"] == "medium"
+
+def test_priority_low(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "severity": "low"
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["priority"] == "low"

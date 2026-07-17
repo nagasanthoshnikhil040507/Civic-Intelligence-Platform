@@ -69,7 +69,19 @@ class DatasetLoader:
             train_paths.extend(t_paths)
             train_labels.extend(t_labels)
             
-            v_paths, v_labels = self._load_category_images(category_dir, "test")
+            valid_dir = category_dir / "valid"
+            test_dir = category_dir / "test"
+            
+            if valid_dir.exists():
+                logger.info(f"Using VALID split for {category_dir.name}")
+                v_paths, v_labels = self._load_category_images(category_dir, "valid")
+            elif test_dir.exists():
+                logger.info(f"VALID split missing. Using TEST split for {category_dir.name}")
+                v_paths, v_labels = self._load_category_images(category_dir, "test")
+            else:
+                logger.info(f"No validation dataset found for {category_dir.name}. Skipping validation.")
+                v_paths, v_labels = [], []
+                
             val_paths.extend(v_paths)
             val_labels.extend(v_labels)
 

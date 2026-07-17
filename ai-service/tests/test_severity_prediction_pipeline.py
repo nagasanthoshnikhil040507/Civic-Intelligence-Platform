@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import patch, MagicMock
 from app.pipelines.severity_prediction.pipeline import SeverityPredictionPipeline
 
 @pytest.fixture
@@ -32,40 +31,6 @@ def test_invalid_input_handling(pipeline):
     with pytest.raises(ValueError, match="Input to severity prediction must be a dictionary."):
         pipeline.run("this is a string, not a dict")
 
-@patch("app.pipelines.severity_prediction.pipeline.model_loader")
-def test_severity_model_not_available(mock_loader, pipeline):
-    """Verify pipeline returns SEVERITY_MODEL_NOT_AVAILABLE when missing."""
-    mock_loader.get_model.return_value = None
-    
-    input_data = {
-        "processingStatus": "INFERENCE_NOT_IMPLEMENTED",
-        "categoryPrediction": "road_damage"
-    }
-    
-    result = pipeline.run(input_data)
-    
-    assert result["processingStatus"] == "SEVERITY_MODEL_NOT_AVAILABLE"
-    assert "Severity TensorFlow model has not been trained yet" in result["message"]
-    mock_loader.get_model.assert_called_once_with("test_severity")
-
-@patch("app.pipelines.severity_prediction.pipeline.model_loader")
-def test_no_tensorflow_inference_occurs(mock_loader, pipeline):
-    """Verify No TensorFlow inference occurs even if model is loaded."""
-    mock_model = MagicMock()
-    mock_loader.get_model.return_value = mock_model
-    
-    input_data = {
-        "processingStatus": "INFERENCE_NOT_IMPLEMENTED",
-        "categoryPrediction": "road_damage"
-    }
-    
-    result = pipeline.run(input_data)
-    
-    # Model predict must NOT be called
-    mock_model.predict.assert_not_called()
-    assert result["processingStatus"] == "INFERENCE_NOT_IMPLEMENTED"
-    assert "severity inference logic is strictly disabled" in result["message"]
-
 def test_structured_output(pipeline):
     """Verify Structured output compatibility with aiAnalysis schema."""
     input_data = {
@@ -80,3 +45,41 @@ def test_structured_output(pipeline):
     assert result["categoryPrediction"] == "garbage"
     assert "analyzedAt" in result
     assert "processingStatus" in result
+
+def test_severity_water_leakage(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "categoryPrediction": "water_leakage"
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["severity"] == "critical"
+
+def test_severity_road_damage(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "categoryPrediction": "road_damage"
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["severity"] == "high"
+
+def test_severity_garbage(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "categoryPrediction": "garbage"
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["severity"] == "medium"
+
+def test_severity_street_light(pipeline):
+    input_data = {
+        "processingStatus": "completed",
+        "categoryPrediction": "street_light",
+        "duplicateDetected": True
+    }
+    result = pipeline.run(input_data)
+    assert result["processingStatus"] == "completed"
+    assert result["severity"] == "low"
+    # Duplicate logic runs seamlessly
