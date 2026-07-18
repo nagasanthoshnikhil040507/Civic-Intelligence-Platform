@@ -168,6 +168,8 @@ class DuplicateComplaintDetectionPipeline:
             "similarity": 0.0
         }
         
+        import traceback
+        
         # Step 1 & 2: Calculate the perceptual hash of the incoming images
         new_hashes = []
         for url in image_urls:
@@ -188,40 +190,49 @@ class DuplicateComplaintDetectionPipeline:
         
         # Step 4: Iterative Hash Comparison
         for complaint in nearby_complaints:
-            comp_id = str(complaint.get("_id"))
-            if comp_id == current_complaint_id:
-                logger.info(f"Excluding current complaint {comp_id} from duplicate check.")
-                continue
-                
-            stored_hashes = []
-            
-            # Extract stored image hash safely
-            stored_hash = complaint.get("imageHash")
-            if not stored_hash and "aiInsights" in complaint:
-                stored_hash = complaint["aiInsights"].get("imageHash")
-                
-            if stored_hash:
-                stored_hashes.append(stored_hash)
-            elif "images" in complaint and complaint["images"]:
-                logger.info(f"Computing hashes on-the-fly for complaint {comp_id}")
-                for img in complaint["images"]:
-                    img_url = img.get("url")
-                    if img_url:
-                        if img_url.startswith("/uploads/") or img_url.startswith("uploads/"):
-                            base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
-                            img_url = str(base_dir / "server" / "public" / img_url.lstrip("/"))
-                        h = self.calculate_image_hash(img_url)
-                        if h:
-                            stored_hashes.append(h)
-            
-            for new_hash in new_hashes:
-                for s_hash in stored_hashes:
-                    similarity = self.compare_hashes(new_hash, s_hash)
-                    logger.info(f"Comparing with {comp_id} -> Similarity: {similarity*100:.1f}%")
+            try:
+                comp_id = str(complaint.get("_id"))
+                if comp_id == current_complaint_id:
+                    logger.info(f"Excluding current complaint {comp_id} from duplicate check.")
+                    continue
                     
-                    if similarity > highest_similarity:
-                        highest_similarity = similarity
-                        best_match_id = comp_id
+                stored_hashes = []
+                
+                # Extract stored image hash safely
+                stored_hash = complaint.get("imageHash")
+                if not stored_hash and "aiInsights" in complaint:
+                    stored_hash = complaint["aiInsights"].get("imageHash")
+                    
+                if stored_hash:
+                    stored_hashes.append(stored_hash)
+                elif "images" in complaint and complaint["images"]:
+                    logger.info(f"Computing hashes on-the-fly for complaint {comp_id}")
+                    for img in complaint["images"]:
+                        try:
+                            img_url = img.get("url") if isinstance(img, dict) else img
+                            if isinstance(img_url, dict):
+                                img_url = img_url.get("url")
+                                
+                            if img_url and isinstance(img_url, str):
+                                if img_url.startswith("/uploads/") or img_url.startswith("uploads/"):
+                                    base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
+                                    img_url = str(base_dir / "server" / "public" / img_url.lstrip("/"))
+                                h = self.calculate_image_hash(img_url)
+                                if h:
+                                    stored_hashes.append(h)
+                        except Exception as inner_e:
+                            logger.error(f"Error parsing image array in complaint {comp_id}: {inner_e}\n{traceback.format_exc()}")
+                
+                for new_hash in new_hashes:
+                    for s_hash in stored_hashes:
+                        similarity = self.compare_hashes(new_hash, s_hash)
+                        logger.info(f"Comparing with {comp_id} -> Similarity: {similarity*100:.1f}%")
+                        
+                        if similarity > highest_similarity:
+                            highest_similarity = similarity
+                            best_match_id = comp_id
+            except Exception as e:
+                logger.error(f"EXCEPTION during comparison with complaint {complaint.get('_id', 'unknown')}: {e}\n{traceback.format_exc()}")
                     
         # Step 5: Decision Logic & Output Structuring
         if highest_similarity >= self.similarity_threshold and best_match_id:

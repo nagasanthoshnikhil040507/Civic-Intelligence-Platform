@@ -21,12 +21,37 @@ def load_image(file_path: str) -> np.ndarray:
         FileNotFoundError: If the file does not exist or URL cannot be fetched.
         ValueError: If the file is not a valid image format or cannot be decoded.
     """
+    import time
     try:
         if file_path.startswith("http://") or file_path.startswith("https://"):
             logger.info(f"Downloading image from URL: {file_path}")
-            response = requests.get(file_path, timeout=10)
-            response.raise_for_status()
             
+            max_retries = 3
+            response = None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    response = requests.get(file_path, timeout=10)
+                    if response.status_code == 200:
+                        break
+                    
+                    logger.warning(f"Cloudinary fetch attempt {attempt} returned HTTP {response.status_code}")
+                    if response.status_code in [404, 403, 502, 503, 504]:
+                        if attempt < max_retries:
+                            logger.info(f"Retrying image download in 2 seconds (Attempt {attempt + 1}/{max_retries})...")
+                            time.sleep(2)
+                            continue
+                    response.raise_for_status()
+                except requests.exceptions.RequestException as e:
+                    logger.warning(f"Cloudinary fetch attempt {attempt} failed: {e}")
+                    if attempt < max_retries:
+                        logger.info(f"Retrying image download in 2 seconds (Attempt {attempt + 1}/{max_retries})...")
+                        time.sleep(2)
+                        continue
+                    raise e
+                    
+            if response is None or response.status_code != 200:
+                raise FileNotFoundError(f"Failed to fetch image from URL after {max_retries} attempts: {file_path}")
+                
             # Decode the image directly from memory
             image_array = np.frombuffer(response.content, np.uint8)
             image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
@@ -46,7 +71,8 @@ def load_image(file_path: str) -> np.ndarray:
         raise FileNotFoundError(f"Failed to fetch image from URL: {file_path}")
     except Exception as e:
         if not isinstance(e, FileNotFoundError):
-            logger.error(f"Error loading image from {file_path}: {e}")
+            import traceback
+            logger.error(f"Error loading image from {file_path}: {e}\n{traceback.format_exc()}")
         raise
 
 def resize_image(image: np.ndarray, target_size: Tuple[int, int] = (224, 224)) -> np.ndarray:
