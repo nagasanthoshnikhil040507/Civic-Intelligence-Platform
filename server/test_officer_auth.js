@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const BASE_URL = 'http://localhost:5000/api/v1';
-const MONGODB_URI = 'mongodb+srv://civic_admin:Nsn0405@cluster0.lb4bxr6.mongodb.net/civic_intelligence?appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) throw new Error("MONGODB_URI required in environment for tests");
 
 async function runTests() {
   console.log('--- Officer Auth Integration Tests ---\n');

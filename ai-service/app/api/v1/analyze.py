@@ -26,7 +26,7 @@ department_pipeline = DepartmentRecommendationPipeline()
 from app.config.settings import get_settings
 settings = get_settings()
 
-duplicate_pipeline = DuplicateComplaintDetectionPipeline(db_uri=settings.MONGO_URI, db_name=settings.DB_NAME)
+duplicate_pipeline = DuplicateComplaintDetectionPipeline(db_uri=settings.MONGODB_URI, db_name=settings.DB_NAME)
 
 @router.post("/analyze")
 async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):

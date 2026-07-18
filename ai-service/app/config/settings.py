@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     # External Services
     NODE_API_URL: str = "http://localhost:5000/api/v1"
-    MONGO_URI: str = "mongodb+srv://civic_admin:Nsn0405@cluster0.lb4bxr6.mongodb.net/civic_intelligence?appName=Cluster0"
+    MONGODB_URI: str
     DB_NAME: str = "civic_intelligence"
     
     # Timeouts and limits

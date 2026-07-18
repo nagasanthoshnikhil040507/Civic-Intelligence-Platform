@@ -15,7 +15,7 @@ class DuplicateComplaintDetectionPipeline:
     perceptual image hashes of geographically nearby complaints using MongoDB.
     """
 
-    def __init__(self, db_uri: str = "mongodb://localhost:27017/", db_name: str = "civic_platform", similarity_threshold: float = 0.90) -> None:
+    def __init__(self, db_uri: str, db_name: str = "civic_platform", similarity_threshold: float = 0.90) -> None:
         """
         Initializes the DuplicateComplaintDetectionPipeline.
 

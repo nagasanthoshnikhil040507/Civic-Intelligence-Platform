@@ -4,7 +4,8 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: '../.env' }); // Adjust if needed
 
 // Configuration
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/civic_intelligence';
+const MONGO_URI = process.env.MONGODB_URI;
+if (!MONGO_URI) throw new Error("MONGODB_URI required in environment for tests");
 const EXPRESS_URL = process.env.API_URL || 'http://localhost:3000/api/v1';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
