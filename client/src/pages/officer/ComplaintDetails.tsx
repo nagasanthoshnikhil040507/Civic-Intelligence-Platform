@@ -310,24 +310,24 @@ export default function OfficerComplaintDetails() {
             <h3 className="font-bold text-slate-900 pb-2 border-b border-slate-100 uppercase text-xs tracking-widest">Metadata</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Category</p>
-                <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <FileText className="w-4 h-4 text-slate-400" />
-                  <span className="capitalize font-medium">{complaint.category.replace('_', ' ')}</span>
-                </div>
-              </div>
-              <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Priority</p>
                 <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <AlertCircle className={`w-4 h-4 ${complaint.priority === 'high' || complaint.priority === 'critical' ? 'text-red-500' : 'text-slate-400'}`} />
-                  <span className="capitalize font-medium">{complaint.priority || 'Medium'}</span>
+                  <AlertCircle className={`w-4 h-4 ${(complaint.priority || 0) > 70 ? 'text-red-500' : 'text-slate-400'}`} />
+                  <span className="capitalize font-medium">
+                    {complaint.priority !== undefined 
+                      ? `${complaint.priority} (${complaint.priority <= 30 ? 'Low' : complaint.priority <= 70 ? 'Medium' : 'High'})` 
+                      : 'N/A'}
+                  </span>
                 </div>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Department</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Garbage Quantity</p>
                 <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <Building2 className="w-4 h-4 text-slate-400" />
-                  <span className="font-medium">{complaint.department ? complaint.department.name : 'Unassigned'}</span>
+                  <span className="font-medium">
+                    {complaint.garbageQuantity 
+                      ? `${complaint.garbageQuantity} (${complaint.garbageQuantity === 1 ? 'Small' : complaint.garbageQuantity === 2 ? 'Medium' : 'Large'})` 
+                      : 'N/A'}
+                  </span>
                 </div>
               </div>
               <div>
@@ -359,24 +359,24 @@ export default function OfficerComplaintDetails() {
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Category</p>
-                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.categoryPrediction?.replace('_', ' ') || 'N/A'}</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Garbage Detected</p>
+                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.garbageDetected ? 'Yes' : 'No'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Confidence</p>
                     <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.confidence ? `${(complaint.aiAnalysis.confidence * 100).toFixed(1)}%` : 'N/A'}</p>
                   </div>
                   <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Quantity Estimation</p>
+                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.quantityEstimation || 'N/A'}</p>
+                  </div>
+                  <div>
                     <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Severity</p>
                     <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.severity || 'N/A'}</p>
                   </div>
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Priority</p>
-                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.priority || 'N/A'}</p>
-                  </div>
                   <div className="col-span-2">
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Department Recommendation</p>
-                    <p className="text-sm font-medium text-slate-200">{complaint.aiAnalysis.departmentRecommendation || 'N/A'}</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Priority Prediction</p>
+                    <p className="text-sm font-medium text-slate-200 capitalize">{complaint.aiAnalysis.priority || 'N/A'}</p>
                   </div>
                   <div className="col-span-2 border-t border-slate-700 pt-2">
                     <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Duplicate Detection</p>

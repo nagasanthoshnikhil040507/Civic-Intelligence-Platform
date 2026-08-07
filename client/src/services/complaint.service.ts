@@ -8,7 +8,6 @@ export interface LocationPayload {
 export interface CreateComplaintPayload {
   title: string;
   description: string;
-  category: string;
   location: LocationPayload;
   address?: string;
   images?: string[];
@@ -41,20 +40,24 @@ export interface ComplaintResponse {
     resolutionNote: string;
   };
   aiAnalysis?: {
-    categoryPrediction?: string;
+    garbageDetected?: boolean;
+    quantityEstimation?: string;
     confidence?: number;
     severity?: string;
     priority?: string;
-    departmentRecommendation?: string;
     duplicateDetected?: boolean;
     matchedComplaintId?: string;
-    similarity?: number;
     processingStatus?: string;
     analyzedAt?: string;
     message?: string;
     totalInferenceTimeMs?: number;
   };
-  priority?: string;
+  garbageQuantity?: 1 | 2 | 3;
+  confidenceScore?: number;
+  reportCount?: number;
+  linkedComplaintId?: string;
+  citizenVerification?: string;
+  priority?: number;
   departmentId?: string;
   department?: any; // If populated
   updatedAt?: string;

@@ -40,8 +40,12 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // Ignore refresh token endpoint 401s to prevent loop
-    if (originalRequest.url === '/auth/refresh') {
+    // Ignore auth endpoints 401s to prevent loop and improper refresh attempts
+    if (
+      originalRequest.url === '/auth/refresh' ||
+      originalRequest.url === '/auth/login' ||
+      originalRequest.url === '/auth/register'
+    ) {
       return Promise.reject(error);
     }
 

@@ -19,8 +19,6 @@ const steps = [
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(100),
-  category: z.string().min(1, 'Category is required'),
-  department: z.string().optional(),
   description: z.string().min(20, 'Description must be at least 20 characters'),
   location: z.tuple([
     z.number().min(-180, 'Invalid longitude').max(180, 'Invalid longitude'),
@@ -48,7 +46,7 @@ export default function ReportComplaint() {
     let isStepValid = true;
     
     if (currentStep === 0) {
-      isStepValid = await trigger(['title', 'category', 'description']);
+      isStepValid = await trigger(['title', 'description']);
     } else if (currentStep === 1) {
       // Custom validation for images
       if (images.length > 5) {
@@ -83,7 +81,6 @@ export default function ReportComplaint() {
       const complaint = await ComplaintService.create({
         title: data.title,
         description: data.description,
-        category: data.category,
         location: {
           type: 'Point',
           coordinates: data.location
@@ -161,8 +158,8 @@ export default function ReportComplaint() {
                 {currentStep === 0 && (
                   <div className="space-y-6">
                     <div>
-                      <h2 className="text-lg font-medium text-slate-900">Complaint Details</h2>
-                      <p className="mt-1 text-sm text-slate-500">What is the issue about?</p>
+                      <h2 className="text-lg font-medium text-slate-900">Report Garbage</h2>
+                      <p className="mt-1 text-sm text-slate-500">Provide details about the garbage issue.</p>
                     </div>
 
                     <div className="space-y-4">
@@ -172,39 +169,9 @@ export default function ReportComplaint() {
                           {...register('title')}
                           type="text"
                           className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          placeholder="e.g. Large pothole on Main St"
+                          placeholder="e.g. Garbage overflow near bus stop"
                         />
                         {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700">Category</label>
-                          <select
-                            {...register('category')}
-                            className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                          >
-                            <option value="">Select a category</option>
-                            <option value="infrastructure">Infrastructure & Roads</option>
-                            <option value="sanitation">Waste & Sanitation</option>
-                            <option value="utilities">Water & Utilities</option>
-                            <option value="environment">Parks & Environment</option>
-                            <option value="other">Other</option>
-                          </select>
-                          {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category.message}</p>}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700">Department (Optional)</label>
-                          <select
-                            {...register('department')}
-                            className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                          >
-                            <option value="">Auto-assign via AI</option>
-                            <option value="public_works">Public Works</option>
-                            <option value="sanitation">Sanitation</option>
-                            <option value="water_board">Water Board</option>
-                          </select>
-                        </div>
                       </div>
 
                       <div>
@@ -213,7 +180,7 @@ export default function ReportComplaint() {
                           {...register('description')}
                           rows={4}
                           className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          placeholder="Please describe the issue in detail..."
+                          placeholder="Please describe the garbage pile, exact location details, or any other helpful information..."
                         />
                         {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description.message}</p>}
                       </div>
@@ -265,17 +232,6 @@ export default function ReportComplaint() {
                       <div>
                         <h4 className="text-sm font-medium text-slate-500 mb-1">Title</h4>
                         <p className="text-slate-900 font-medium">{getValues('title')}</p>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-500 mb-1">Category</h4>
-                          <p className="text-slate-900 capitalize">{getValues('category')}</p>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-500 mb-1">Department</h4>
-                          <p className="text-slate-900 capitalize">{getValues('department') || 'Auto-assign'}</p>
-                        </div>
                       </div>
                       
                       <div>

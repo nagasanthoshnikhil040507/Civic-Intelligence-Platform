@@ -136,8 +136,8 @@ export default function AllComplaints() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-6 py-4 font-semibold">ID & Title</th>
-                <th className="px-6 py-4 font-semibold">Category</th>
-                <th className="px-6 py-4 font-semibold">Department</th>
+                <th className="px-6 py-4 font-semibold">Priority</th>
+                <th className="px-6 py-4 font-semibold">Quantity</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold">Created Date</th>
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
@@ -169,10 +169,10 @@ export default function AllComplaints() {
                       </div>
                     </td>
                     <td className="px-6 py-4 capitalize text-slate-600">
-                      {complaint.category.replace('_', ' ')}
+                      {complaint.priority !== undefined ? complaint.priority : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      {complaint.department ? complaint.department.name : <span className="text-slate-400 italic">Unassigned</span>}
+                      {complaint.garbageQuantity ? `${complaint.garbageQuantity} ` : 'N/A'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider rounded-md border ${getStatusBadge(complaint.status)}`}>

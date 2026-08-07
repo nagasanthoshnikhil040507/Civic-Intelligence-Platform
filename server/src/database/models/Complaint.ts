@@ -7,9 +7,13 @@ export interface IComplaint extends Document {
   title: string;
   description: string;
   status: 'pending' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'rejected';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: number; // 0-100 score
   severity?: number;
-  aiInsightId?: Types.ObjectId;
+  garbageQuantity?: 1 | 2 | 3; // 1=Small, 2=Medium, 3=Large
+  confidenceScore?: number;
+  reportCount: number;
+  linkedComplaintId?: Types.ObjectId;
+  citizenVerification?: 'pending' | 'confirmed' | 'rejected';
   images: Array<{
     publicId: string;
     url: string;
@@ -41,14 +45,13 @@ export interface IComplaint extends Document {
     resolutionNote: string;
   };
   aiAnalysis?: {
-    categoryPrediction?: string;
+    garbageDetected?: boolean;
     confidence?: number;
     severity?: string;
     priority?: string;
-    departmentRecommendation?: string;
+    quantityEstimation?: string;
     duplicateDetected?: boolean;
     matchedComplaintId?: Types.ObjectId;
-    similarity?: number;
     processingStatus?: string;
     analyzedAt?: Date;
     message?: string;
@@ -65,7 +68,7 @@ const complaintSchema = new Schema<IComplaint>(
   {
     citizenId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     departmentId: { type: Schema.Types.ObjectId, ref: 'Department' },
-    category: { type: String, required: true },
+    category: { type: String, required: true, default: 'Garbage' },
     title: { type: String, required: true },
     description: { type: String, required: true },
     status: {
@@ -73,13 +76,13 @@ const complaintSchema = new Schema<IComplaint>(
       enum: ['pending', 'assigned', 'in_progress', 'resolved', 'closed', 'rejected'],
       default: 'pending',
     },
-    priority: {
-      type: String,
-      enum: ['low', 'medium', 'high', 'critical'],
-      default: 'medium',
-    },
+    priority: { type: Number, min: 0, max: 100, default: 50 },
     severity: { type: Number, min: 1, max: 100 },
-    aiInsightId: { type: Schema.Types.ObjectId, ref: 'AIInsight' },
+    garbageQuantity: { type: Number, enum: [1, 2, 3] },
+    confidenceScore: { type: Number, min: 0, max: 100, default: 0 },
+    reportCount: { type: Number, default: 1 },
+    linkedComplaintId: { type: Schema.Types.ObjectId, ref: 'Complaint' },
+    citizenVerification: { type: String, enum: ['pending', 'confirmed', 'rejected'], default: 'pending' },
     location: {
       type: { type: String, enum: ['Point'], required: true },
       coordinates: { type: [Number], required: true },
@@ -117,14 +120,13 @@ const complaintSchema = new Schema<IComplaint>(
       resolutionNote: { type: String },
     },
     aiAnalysis: {
-      categoryPrediction: { type: String },
+      garbageDetected: { type: Boolean },
       confidence: { type: Number },
       severity: { type: String },
       priority: { type: String },
-      departmentRecommendation: { type: String },
+      quantityEstimation: { type: String },
       duplicateDetected: { type: Boolean },
       matchedComplaintId: { type: Schema.Types.ObjectId, ref: 'Complaint' },
-      similarity: { type: Number },
       processingStatus: { type: String },
       analyzedAt: { type: Date },
       message: { type: String },
@@ -138,12 +140,10 @@ const complaintSchema = new Schema<IComplaint>(
 );
 
 // Indexes
-// Explanation:
 // 1. 2dsphere index on location is MANDATORY for geospatial queries (e.g., finding nearby duplicates).
-// 2. Compound index on (status, departmentId) optimizes the most common query: fetching active complaints for a specific department.
-// 3. Index on citizenId allows fast fetching of a user's complaint history.
+// 2. Index on citizenId allows fast fetching of a user's complaint history.
 complaintSchema.index({ location: '2dsphere' });
-complaintSchema.index({ status: 1, departmentId: 1 });
+complaintSchema.index({ status: 1 });
 complaintSchema.index({ citizenId: 1 });
 complaintSchema.index({ createdAt: -1 });
 

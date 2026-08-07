@@ -6,7 +6,7 @@ dotenv.config();
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('5000'),
-  MONGODB_URI: z.string().url(),
+  MONGODB_URI: z.string().refine((val) => val.startsWith('mongodb://') || val.startsWith('mongodb+srv://'), { message: 'Must be a valid MongoDB connection string starting with mongodb:// or mongodb+srv://' }),
   JWT_SECRET: z.string().min(10),
   CLOUDINARY_URL: z.string().optional(),
   AI_SERVICE_URL: z.string().url(),

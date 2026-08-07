@@ -31,6 +31,8 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
     } as any, session);
   }
 
+
+
   async assignOfficer(complaintId: string, officerId: string, assignedBy: string, session?: ClientSession) {
     return this.update(complaintId, { 
       $set: { status: 'assigned' },
@@ -121,7 +123,6 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
 
   async verifyOfficerAccess(complaint: any, officerId: string) {
     const { ApiError } = require('../utils/ApiError');
-    const { Department } = require('../database/models/Department');
     
     // Admin always has access
     // Wait, we don't know if they are admin here, but usually admin doesn't hit this. We assume officer.
@@ -132,6 +133,7 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
 
     // Check if in officer's department
     if (complaint.departmentId) {
+      const { Department } = require('../database/models/Department');
       const department = await Department.findById(complaint.departmentId);
       if (department && department.officers.includes(new Types.ObjectId(officerId))) {
         return true;

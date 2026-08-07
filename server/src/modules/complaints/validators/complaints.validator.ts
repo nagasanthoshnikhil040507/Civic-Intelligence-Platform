@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createComplaintSchema = z.object({
   title: z.string().min(5).max(100),
   description: z.string().min(20).max(2000),
-  category: z.string(),
+  category: z.string().optional().default('Garbage'),
   location: z.object({
     type: z.literal('Point'),
     coordinates: z.tuple([
