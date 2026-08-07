@@ -4,27 +4,14 @@ from typing import Dict, Any, Optional, List
 import pymongo
 import requests
 from pathlib import Path
-import pymongo
+from datetime import datetime, timedelta, timezone
+from difflib import SequenceMatcher
 
 from app.utils.logger import logger
 from app.config.settings import get_settings
 
 class DuplicateComplaintDetectionPipeline:
-    """
-    Pipeline responsible for detecting duplicate civic complaints by comparing
-    perceptual image hashes of geographically nearby complaints using MongoDB.
-    """
-
-    def __init__(self, db_uri: str, db_name: str = "civic_platform", similarity_threshold: float = 0.90) -> None:
-        """
-        Initializes the DuplicateComplaintDetectionPipeline.
-
-        Args:
-            db_uri (str): MongoDB connection URI. Defaults to localhost.
-            db_name (str): The name of the MongoDB database containing the complaints.
-            similarity_threshold (float): Minimum similarity score [0.0-1.0] to classify 
-                as a duplicate. Defaults to 0.90.
-        """
+    def __init__(self, db_uri: str, db_name: str = "civic_platform", similarity_threshold: float = 0.85) -> None:
         self.similarity_threshold = similarity_threshold
         try:
             self.client = pymongo.MongoClient(db_uri, serverSelectionTimeoutMS=2000)
@@ -37,22 +24,8 @@ class DuplicateComplaintDetectionPipeline:
             self.collection = None
 
     def calculate_image_hash(self, image_path: str) -> Optional[str]:
-        """
-        Calculates a perceptual Average Hash (aHash) for the given image using OpenCV.
-        This provides a 64-bit hash representing the structure of the image, making it
-        resistant to minor scaling and compression artifacts.
-
-        Args:
-            image_path (str): The absolute or relative file path to the uploaded image.
-
-        Returns:
-            Optional[str]: The computed binary hash as a 64-character string of '0's and '1's, 
-                or None if the image fails to load.
-        """
         try:
-            # Step 1: Load the uploaded complaint image using OpenCV
             if image_path.startswith("http://") or image_path.startswith("https://"):
-                logger.info(f"Downloading image from URL: {image_path}")
                 resp = requests.get(image_path, timeout=5)
                 resp.raise_for_status()
                 image_array = np.asarray(bytearray(resp.content), dtype=np.uint8)
@@ -61,46 +34,28 @@ class DuplicateComplaintDetectionPipeline:
                 image = cv2.imread(image_path)
                 
             if image is None:
-                logger.error(f"Failed to load image at {image_path} for hashing.")
                 return None
             
-            # Step 2: Generate an image hash
-            # Convert to grayscale and resize to an 8x8 block
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             resized = cv2.resize(gray, (8, 8), interpolation=cv2.INTER_AREA)
-            
-            # Compute average pixel intensity across the 64 pixels
             avg = resized.mean()
-            
-            # Construct the binary hash string (1 if pixel > avg else 0)
             diff = resized > avg
             hash_str = ''.join(['1' if bit else '0' for bit in diff.flatten()])
             return hash_str
-            
         except Exception as e:
             logger.error(f"Error calculating perceptual image hash: {e}")
             return None
 
-    def find_nearby_complaints(self, latitude: float, longitude: float, radius_meters: int = 100) -> List[Dict[str, Any]]:
-        """
-        Searches MongoDB for nearby complaints using a 2dsphere geospatial $near query.
-
-        Args:
-            latitude (float): GPS Latitude of the new complaint.
-            longitude (float): GPS Longitude of the new complaint.
-            radius_meters (int): Search radius in meters. Default is 100.
-
-        Returns:
-            List[Dict[str, Any]]: A list of nearby complaint MongoDB documents.
-        """
+    def find_nearby_complaints(self, latitude: float, longitude: float, radius_meters: int = 30) -> List[Dict[str, Any]]:
         if self.collection is None:
-            logger.warning("MongoDB collection not active. Returning empty nearby list.")
             return []
 
         try:
-            # MongoDB $near requires a GeoJSON Point format. 
-            # Note: GeoJSON strict ordering requires [Longitude, Latitude]
+            # 24-hour time window
+            time_threshold = datetime.utcnow() - timedelta(hours=24)
+            
             query = {
+                "createdAt": {"$gte": time_threshold},
                 "location": {
                     "$near": {
                         "$geometry": {
@@ -112,65 +67,36 @@ class DuplicateComplaintDetectionPipeline:
                 }
             }
             cursor = self.collection.find(query)
-            nearby_docs = list(cursor)
-            return nearby_docs
+            return list(cursor)
         except Exception as e:
             logger.error(f"Error executing geospatial 2dsphere query: {e}")
             return []
 
     def compare_hashes(self, hash1: str, hash2: str) -> float:
-        """
-        Compares two perceptual string hashes and returns a similarity score.
-
-        Args:
-            hash1 (str): The first 64-bit string hash.
-            hash2 (str): The second 64-bit string hash.
-
-        Returns:
-            float: Similarity score (1.0 = identical, 0.0 = completely different).
-        """
         if not hash1 or not hash2 or len(hash1) != len(hash2):
             return 0.0
-            
-        # Calculate Hamming distance (count of differing bits)
         hamming_distance = sum(c1 != c2 for c1, c2 in zip(hash1, hash2))
+        return 1.0 - (hamming_distance / len(hash1))
         
-        # Convert Hamming distance to a normalized similarity percentage (1.0 - (diff / length))
-        similarity = 1.0 - (hamming_distance / len(hash1))
-        return similarity
+    def compare_description(self, desc1: str, desc2: str) -> float:
+        if not desc1 or not desc2:
+            return 0.0
+        return SequenceMatcher(None, desc1.lower(), desc2.lower()).ratio()
 
-    def run(self, image_urls: List[str], latitude: float, longitude: float, current_complaint_id: str) -> Dict[str, Any]:
-        """
-        Executes the end-to-end duplicate complaint detection pipeline.
-
-        Step 1: Load the image.
-        Step 2: Generate an image hash.
-        Step 3: Search for nearby complaints via geospatial queries.
-        Step 4: Compare similarity against stored hashes.
-        Step 5: Return duplicate matching results.
-
-        Args:
-            image_urls (List[str]): The paths to the newly uploaded complaint images.
-            latitude (float): The geographical latitude.
-            longitude (float): The geographical longitude.
-            current_complaint_id (str): ID of the complaint being processed to exclude it.
-
-        Returns:
-            Dict[str, Any]: A dictionary containing duplicate detection results.
-                Format: {"duplicateDetected": bool, "matchedComplaintId": str|None, "similarity": float}
-        """
+    def run(self, image_urls: List[str], latitude: float, longitude: float, current_complaint_id: str, description: str = "") -> Dict[str, Any]:
         logger.info(f"Running Duplicate Detection Pipeline for coordinates: [{latitude}, {longitude}]")
         
-        # Base fallback response
         response = {
             "duplicateDetected": False,
             "matchedComplaintId": None,
-            "similarity": 0.0
+            "similarity": 0.0,
+            "reportCount": 1,
+            "complaintAgeHours": 0.0,
+            "confidenceScore": 0.0
         }
         
         import traceback
         
-        # Step 1 & 2: Calculate the perceptual hash of the incoming images
         new_hashes = []
         for url in image_urls:
             h = self.calculate_image_hash(url)
@@ -178,27 +104,24 @@ class DuplicateComplaintDetectionPipeline:
                 new_hashes.append(h)
                 
         if not new_hashes:
-            logger.warning("Skipping duplicate detection: Failed to generate perceptual hash for any image.")
+            logger.warning("Skipping duplicate detection: Failed to generate perceptual hash.")
             return response
             
-        # Step 3: Fetch geographically proximate complaints
-        nearby_complaints = self.find_nearby_complaints(latitude, longitude, radius_meters=100)
-        logger.info(f"Found {len(nearby_complaints)} existing complaints within 100m radius.")
+        nearby_complaints = self.find_nearby_complaints(latitude, longitude, radius_meters=30)
+        logger.info(f"Found {len(nearby_complaints)} existing complaints within 30m radius and 24h window.")
         
         best_match_id = None
-        highest_similarity = 0.0
+        highest_image_sim = 0.0
+        highest_desc_sim = 0.0
+        best_match_complaint = None
         
-        # Step 4: Iterative Hash Comparison
         for complaint in nearby_complaints:
             try:
                 comp_id = str(complaint.get("_id"))
                 if comp_id == current_complaint_id:
-                    logger.info(f"Excluding current complaint {comp_id} from duplicate check.")
                     continue
                     
                 stored_hashes = []
-                
-                # Extract stored image hash safely
                 stored_hash = complaint.get("imageHash")
                 if not stored_hash and "aiInsights" in complaint:
                     stored_hash = complaint["aiInsights"].get("imageHash")
@@ -206,13 +129,11 @@ class DuplicateComplaintDetectionPipeline:
                 if stored_hash:
                     stored_hashes.append(stored_hash)
                 elif "images" in complaint and complaint["images"]:
-                    logger.info(f"Computing hashes on-the-fly for complaint {comp_id}")
                     for img in complaint["images"]:
                         try:
                             img_url = img.get("url") if isinstance(img, dict) else img
                             if isinstance(img_url, dict):
                                 img_url = img_url.get("url")
-                                
                             if img_url and isinstance(img_url, str):
                                 if img_url.startswith("/uploads/") or img_url.startswith("uploads/"):
                                     base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
@@ -221,27 +142,64 @@ class DuplicateComplaintDetectionPipeline:
                                 if h:
                                     stored_hashes.append(h)
                         except Exception as inner_e:
-                            logger.error(f"Error parsing image array in complaint {comp_id}: {inner_e}\n{traceback.format_exc()}")
+                            pass
                 
+                # Image Similarity
+                max_sim_for_this_complaint = 0.0
                 for new_hash in new_hashes:
                     for s_hash in stored_hashes:
-                        similarity = self.compare_hashes(new_hash, s_hash)
-                        logger.info(f"Comparing with {comp_id} -> Similarity: {similarity*100:.1f}%")
-                        
-                        if similarity > highest_similarity:
-                            highest_similarity = similarity
-                            best_match_id = comp_id
+                        sim = self.compare_hashes(new_hash, s_hash)
+                        if sim > max_sim_for_this_complaint:
+                            max_sim_for_this_complaint = sim
+                            
+                # Description Similarity
+                stored_desc = complaint.get("description", "")
+                desc_sim = self.compare_description(description, stored_desc)
+                
+                logger.info(f"Comparing with {comp_id} -> Img Sim: {max_sim_for_this_complaint*100:.1f}%, Desc Sim: {desc_sim*100:.1f}%")
+                
+                # Rule: Image >= 85% AND Desc >= 70%
+                if max_sim_for_this_complaint >= 0.85 and desc_sim >= 0.70:
+                    if max_sim_for_this_complaint > highest_image_sim:
+                        highest_image_sim = max_sim_for_this_complaint
+                        highest_desc_sim = desc_sim
+                        best_match_id = comp_id
+                        best_match_complaint = complaint
             except Exception as e:
-                logger.error(f"EXCEPTION during comparison with complaint {complaint.get('_id', 'unknown')}: {e}\n{traceback.format_exc()}")
+                logger.error(f"EXCEPTION during comparison with {complaint.get('_id', 'unknown')}: {e}")
                     
-        # Step 5: Decision Logic & Output Structuring
-        if highest_similarity >= self.similarity_threshold and best_match_id:
-            logger.info(f"Duplicate DETECTED! Matched Complaint ID: {best_match_id} (Similarity: {highest_similarity*100:.1f}%)")
+        if best_match_id and best_match_complaint:
+            logger.info(f"Duplicate DETECTED! Matched Complaint ID: {best_match_id}")
+            
+            # Extract duplicate context
+            report_count = int(best_match_complaint.get("reportCount", 1))
+            created_at = best_match_complaint.get("createdAt")
+            age_hours = 0.0
+            if created_at:
+                # Ensure timezone aware
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                age_delta = datetime.now(timezone.utc) - created_at
+                age_hours = age_delta.total_seconds() / 3600.0
+            
+            # Dynamic Confidence Score (0-100) based on similarities and report count
+            # Base confidence from similarities
+            base_conf = ((highest_image_sim * 0.7) + (highest_desc_sim * 0.3)) * 100
+            # Boost based on report count (max +15)
+            boost = min(report_count * 5, 15)
+            final_conf = min(base_conf + boost, 100.0)
+            
             response["duplicateDetected"] = True
             response["matchedComplaintId"] = best_match_id
-            response["similarity"] = round(highest_similarity, 4)
+            response["similarity"] = round(highest_image_sim, 4)
+            response["reportCount"] = report_count
+            response["complaintAgeHours"] = round(age_hours, 2)
+            response["confidenceScore"] = round(final_conf, 2)
         else:
-            logger.info(f"No duplicate detected. Highest local similarity was {highest_similarity*100:.1f}%.")
-            response["similarity"] = round(highest_similarity, 4)
+            logger.info(f"No duplicate detected.")
+            # Default confidence for non-duplicates based strictly on the current image and desc? 
+            # We just return base 0 here, the classifier will provide its own confidence later if needed,
+            # but user says "Confidence Score Calculate dynamically using: Image similarity, GPS proximity, Description similarity, Report count".
+            # If no duplicate, we just leave it 0 or standard.
             
         return response

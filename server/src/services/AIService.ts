@@ -44,18 +44,44 @@ export class AIService {
 
       // 5. Store prediction inside MongoDB
       console.log(`[AIService] Updating MongoDB for ${complaintId} with AI Analysis results...`);
-      console.log(`[AIService] aiAnalysis before update:`, JSON.stringify(complaint.aiAnalysis || null));
-      const updatedComplaint = await this.complaintService.updateComplaint(complaintId, {
-        $set: {
-          aiAnalysis: {
-            ...prediction,
-            analyzedAt: new Date()
-          }
+      
+      const updatePayload: any = {
+        aiAnalysis: {
+          ...prediction,
+          analyzedAt: new Date()
         }
+      };
+
+      // Map AI predictions to root schema fields
+      if (prediction.priority !== undefined) {
+          updatePayload.priority = prediction.priority;
+      }
+      if (prediction.garbageQuantity !== undefined) {
+          updatePayload.garbageQuantity = prediction.garbageQuantity;
+      }
+      if (prediction.confidence !== undefined) {
+          updatePayload.confidenceScore = prediction.confidence;
+      }
+
+      if (prediction.duplicateDetected && prediction.matchedComplaintId) {
+          updatePayload.linkedComplaintId = prediction.matchedComplaintId;
+          
+          try {
+              // Increment original reportCount
+              console.log(`[AIService] Duplicate found. Incrementing reportCount for original complaint: ${prediction.matchedComplaintId}`);
+              await this.complaintService.updateComplaint(prediction.matchedComplaintId, {
+                  $inc: { reportCount: 1 }
+              } as any);
+          } catch (dupErr: any) {
+              console.error(`[AIService] Failed to increment original complaint reportCount: ${dupErr.message}`);
+          }
+      }
+
+      const updatedComplaint = await this.complaintService.updateComplaint(complaintId, {
+        $set: updatePayload
       } as any);
 
       console.log(`[AIService] Successfully updated MongoDB for ${complaintId}.`);
-      console.log(`[AIService] aiAnalysis after update:`, JSON.stringify(updatedComplaint.aiAnalysis || null));
       // 6. Return prediction
       return updatedComplaint;
     } catch (error: any) {
