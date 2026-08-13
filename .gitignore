@@ -7,3 +7,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+test_query.py
+test-*.js
+create_index.js
+phase3-validator.js
