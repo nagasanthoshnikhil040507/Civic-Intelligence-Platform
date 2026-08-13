@@ -97,6 +97,7 @@ class DuplicateComplaintDetectionPipeline:
         
         import traceback
         
+        debug_comparisons = []
         new_hashes = []
         for url in image_urls:
             h = self.calculate_image_hash(url)
@@ -198,8 +199,18 @@ class DuplicateComplaintDetectionPipeline:
         else:
             logger.info(f"No duplicate detected.")
             # Default confidence for non-duplicates based strictly on the current image and desc? 
-            # We just return base 0 here, the classifier will provide its own confidence later if needed,
-            # but user says "Confidence Score Calculate dynamically using: Image similarity, GPS proximity, Description similarity, Report count".
-            # If no duplicate, we just leave it 0 or standard.
+        # Write debug data to disk
+        try:
+            import json
+            with open("C:/Users/chinn/Downloads/Civic Intelligence Platform/debug_dup.json", "w") as f:
+                json.dump({
+                    "new_complaint_id": current_complaint_id,
+                    "new_hashes": new_hashes,
+                    "nearby_complaints_count": len(nearby_complaints),
+                    "comparisons": debug_comparisons if 'debug_comparisons' in locals() else [],
+                    "best_match_id": best_match_id
+                }, f)
+        except Exception as e:
+            logger.error(f"Failed to write debug file: {e}")
             
         return response

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # External Services
     NODE_API_URL: str = "http://localhost:5000/api/v1"
     MONGODB_URI: str
-    DB_NAME: str = "civic_intelligence"
+    DB_NAME: str = "test"
     
     # Timeouts and limits
     INFERENCE_TIMEOUT: int = 30

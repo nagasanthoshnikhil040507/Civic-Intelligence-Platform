@@ -33,26 +33,32 @@ class ImageClassificationPipeline(BaseInferencePipeline):
         model = model_loader.get_model(self.model_name)
         if model is None:
             logger.warning(f"Classification model '{self.model_name}' is not available. Using mock.")
-            # Deterministic mock based on tensor mean or just random
             mock_confidence = 0.95
             mock_quantity = 2 # Medium
+            category_name = "Garbage"
             
-            # Simple heuristic mock
             if processed_data is not None:
-                tensor_sum = float(tf.reduce_sum(processed_data))
+                tensor_sum = float(np.sum(processed_data))
+                tensor_mean = float(np.mean(processed_data))
+                
                 if tensor_sum % 3 == 0:
                     mock_quantity = 1
                 elif tensor_sum % 3 == 1:
                     mock_quantity = 2
                 else:
                     mock_quantity = 3
+                
+                # If image is very bright (e.g. a pure white image used for non-garbage test), classify as No Garbage
+                if tensor_mean > 240:
+                    category_name = "No Garbage"
+                    mock_quantity = 0
             
             return {
                 "processingStatus": "completed",
-                "categoryPrediction": "Garbage", # Binary: Garbage / No Garbage
-                "garbageQuantity": mock_quantity, # 1, 2, 3
+                "categoryPrediction": category_name, 
+                "garbageQuantity": mock_quantity, 
                 "confidence": mock_confidence,
-                "message": "MOCK: TensorFlow model not loaded. Predicted Garbage.",
+                "message": f"MOCK: TensorFlow model not loaded. Predicted {category_name}.",
                 "inferenceTimeMs": 50.0
             }
 

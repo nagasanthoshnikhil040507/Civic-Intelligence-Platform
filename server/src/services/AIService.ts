@@ -23,8 +23,11 @@ export class AIService {
       const imageUrls = complaint.images?.map((img: any) => img.url) || [];
 
       // 3. Extract parameters without mutating schema
-      const latitude = complaint.location?.coordinates?.[1] || null;
-      const longitude = complaint.location?.coordinates?.[0] || null;
+      console.log(`[AIService] complaint.location is:`, JSON.stringify(complaint.location));
+      const lat = complaint.location?.coordinates?.[1];
+      const lng = complaint.location?.coordinates?.[0];
+      const latitude = lat !== undefined ? lat : null;
+      const longitude = lng !== undefined ? lng : null;
       const description = complaint.description || "";
       
       const payload = {
@@ -48,7 +51,8 @@ export class AIService {
       const updatePayload: any = {
         aiAnalysis: {
           ...prediction,
-          analyzedAt: new Date()
+          analyzedAt: new Date(),
+          garbageDetected: prediction.categoryPrediction === 'Garbage'
         }
       };
 
