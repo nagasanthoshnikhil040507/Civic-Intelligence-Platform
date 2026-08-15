@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ComplaintService, ComplaintResponse } from '@/services/complaint.service';
-import { Loader2, Search, Filter, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function AssignedComplaints() {
   const navigate = useNavigate();

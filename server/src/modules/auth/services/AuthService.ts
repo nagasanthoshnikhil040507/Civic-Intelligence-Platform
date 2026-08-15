@@ -41,7 +41,7 @@ export class AuthService {
     return PasswordUtils.compare(password, hash);
   }
 
-  async registerCitizen(data: any, userService: any, auditLogService: any) {
+  async registerUser(data: any, role: string, userService: any, auditLogService: any) {
     const strength = PasswordUtils.validateStrength(data.password);
     if (!strength.isValid) {
       // Lazy load ApiError to avoid circular deps if any
@@ -56,7 +56,7 @@ export class AuthService {
       lastName: data.lastName,
       email: data.email,
       passwordHash,
-      role: 'citizen',
+      role: role,
       status: 'active',
       phone: data.phone,
       emailVerified: false,
@@ -94,6 +94,7 @@ export class AuthService {
 
     if (user.isDeleted) throw new ApiError(401, 'Invalid email or password');
     if (user.status === 'inactive') throw new ApiError(401, 'Account is inactive. Please contact support.');
+    if (user.status === 'suspended') throw new ApiError(401, 'Account has been suspended.');
     
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       throw new ApiError(401, 'Account is temporarily locked due to too many failed attempts. Try again later.');
@@ -149,13 +150,24 @@ export class AuthService {
     return { user: safeUser, tokens };
   }
 
-  async refreshTokens(refreshToken: string, auditLogService: any, ipAddress?: string, userAgent?: string) {
+  async refreshTokens(refreshToken: string, userService: any, auditLogService: any, ipAddress?: string, userAgent?: string) {
     let payload;
     const { ApiError } = require('../../../utils/ApiError');
     try {
       payload = this.verifyRefreshToken(refreshToken);
     } catch (err: any) {
       throw new ApiError(401, 'Invalid or expired refresh token');
+    }
+
+    const user = await userService.findById(payload.userId);
+    if (!user || user.isDeleted) {
+      throw new ApiError(401, 'User account no longer exists.');
+    }
+    if (user.status === 'inactive') {
+      throw new ApiError(401, 'Account is inactive. Please contact support.');
+    }
+    if (user.status === 'suspended') {
+      throw new ApiError(401, 'Account has been suspended.');
     }
 
     const { TokenBlacklist } = require('../utils/blacklist');

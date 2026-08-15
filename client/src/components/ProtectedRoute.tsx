@@ -7,14 +7,17 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, user } = useAuthStore();
+  const { isAuthenticated, isLoading, hasHydrated, user } = useAuthStore();
   const location = useLocation();
 
-  if (isLoading) {
+  if (!hasHydrated || isLoading) {
     return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
+    if (location.pathname.startsWith('/admin')) {
+      return <Navigate to="/admin/login" state={{ from: location }} replace />;
+    }
     if (location.pathname.startsWith('/officer')) {
       return <Navigate to="/officer/login" state={{ from: location }} replace />;
     }

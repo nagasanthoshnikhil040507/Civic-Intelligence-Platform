@@ -159,6 +159,14 @@ class DuplicateComplaintDetectionPipeline:
                 
                 logger.info(f"Comparing with {comp_id} -> Img Sim: {max_sim_for_this_complaint*100:.1f}%, Desc Sim: {desc_sim*100:.1f}%")
                 
+                debug_comparisons.append({
+                    "comp_id": comp_id,
+                    "img_sim": max_sim_for_this_complaint,
+                    "desc_sim": desc_sim,
+                    "new_hashes": new_hashes,
+                    "stored_hashes": stored_hashes
+                })
+                
                 # Rule: Image >= 85% AND Desc >= 70%
                 if max_sim_for_this_complaint >= 0.85 and desc_sim >= 0.70:
                     if max_sim_for_this_complaint > highest_image_sim:
@@ -202,13 +210,17 @@ class DuplicateComplaintDetectionPipeline:
         # Write debug data to disk
         try:
             import json
-            with open("C:/Users/chinn/Downloads/Civic Intelligence Platform/debug_dup.json", "w") as f:
+            debug_comparisons = []
+            if 'best_match_id' not in locals(): best_match_id = None
+            with open(f"C:/Users/chinn/Downloads/Civic Intelligence Platform/debug_dup_{current_complaint_id}.json", "w") as f:
                 json.dump({
                     "new_complaint_id": current_complaint_id,
                     "new_hashes": new_hashes,
                     "nearby_complaints_count": len(nearby_complaints),
                     "comparisons": debug_comparisons if 'debug_comparisons' in locals() else [],
-                    "best_match_id": best_match_id
+                    "best_match_id": best_match_id,
+                    "query_latitude": latitude,
+                    "query_longitude": longitude
                 }, f)
         except Exception as e:
             logger.error(f"Failed to write debug file: {e}")

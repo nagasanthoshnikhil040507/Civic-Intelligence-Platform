@@ -4,7 +4,7 @@ import { ComplaintService, ComplaintResponse } from '@/services/complaint.servic
 import { useAuthStore } from '@/store/authStore';
 import { 
   Loader2, AlertCircle, ArrowLeft, Calendar, User, FileText, 
-  MapPin, Camera, Clock, Sparkles, Building2, ShieldAlert, CheckCircle, X
+  MapPin, Camera, Clock, Sparkles, CheckCircle, X
 } from 'lucide-react';
 import LocationPicker from '@/components/map/LocationPicker';
 
@@ -385,7 +385,7 @@ export default function OfficerComplaintDetails() {
                         <p className="text-sm font-medium text-red-400">Duplicate Found</p>
                         <p className="text-xs text-slate-400 mt-1">
                           Matched ID: {complaint.aiAnalysis.matchedComplaintId} <br/>
-                          Similarity: {complaint.aiAnalysis.similarity ? `${(complaint.aiAnalysis.similarity * 100).toFixed(1)}%` : 'N/A'}
+                          Similarity: {(complaint.aiAnalysis as any).similarity ? `${((complaint.aiAnalysis as any).similarity * 100).toFixed(1)}%` : 'N/A'}
                         </p>
                       </div>
                     ) : (

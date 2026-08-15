@@ -1,5 +1,5 @@
 import { useState, useRef, ChangeEvent, DragEvent } from 'react';
-import { Camera, X, UploadCloud, FileWarning } from 'lucide-react';
+import { X, UploadCloud, FileWarning } from 'lucide-react';
 
 interface ImageUploaderProps {
   value: File[];

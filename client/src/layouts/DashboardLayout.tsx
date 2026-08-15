@@ -1,17 +1,12 @@
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Shield, LayoutDashboard, FileText, BarChart3, User, Settings, LogOut, Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { AuthService } from '@/services/auth.service';
+import { useLogout } from '@/hooks/useLogout';
 
 export default function DashboardLayout() {
   const { user } = useAuthStore();
-  const navigate = useNavigate();
   const location = useLocation();
-
-  const handleLogout = async () => {
-    await AuthService.logout();
-    navigate('/login');
-  };
+  const handleLogout = useLogout();
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },

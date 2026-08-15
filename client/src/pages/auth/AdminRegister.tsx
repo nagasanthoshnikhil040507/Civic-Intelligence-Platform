@@ -21,7 +21,7 @@ const registerSchema = z.object({
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
-export default function Register() {
+export default function AdminRegister() {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState('');
   
@@ -32,18 +32,18 @@ export default function Register() {
   const onSubmit = async (data: RegisterForm) => {
     try {
       setServerError('');
-      await AuthService.register(data);
-      navigate('/dashboard', { replace: true });
+      await AuthService.registerAdmin(data);
+      navigate('/admin', { replace: true });
     } catch (error: any) {
-      setServerError(error.response?.data?.message || 'Failed to register account');
+      setServerError(error.response?.data?.message || 'Failed to create admin account');
     }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Create an account</h2>
-        <p className="text-slate-500">Enter your details to get started on the platform</p>
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Create Admin Account</h2>
+        <p className="text-slate-500">Enter your details to create a new administrator account.</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -116,15 +116,15 @@ export default function Register() {
           disabled={isSubmitting}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
+          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Admin Account'}
           {!isSubmitting && <ArrowRight className="w-4 h-4" />}
         </button>
       </form>
 
       <div className="text-center text-sm text-slate-500">
-        Already have an account?{' '}
-        <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
-          Sign in
+        Already have an administrator account?{' '}
+        <Link to="/admin/login" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+          Sign in here
         </Link>
       </div>
 

@@ -8,7 +8,7 @@ let server: any;
 const startServer = async () => {
   await connectDB();
 
-  server = app.listen(config.port, () => {
+  server = app.listen(config.port, '0.0.0.0', () => {
     logger.info(`Server running on port ${config.port} in ${config.env} mode`);
   });
 };

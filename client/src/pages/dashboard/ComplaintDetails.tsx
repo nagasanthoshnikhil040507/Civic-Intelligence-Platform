@@ -4,7 +4,7 @@ import { ComplaintService, ComplaintResponse } from '@/services/complaint.servic
 import { useAuthStore } from '@/store/authStore';
 import { 
   Loader2, AlertCircle, ArrowLeft, Calendar, User, FileText, 
-  MapPin, Camera, Clock, CheckCircle, Sparkles, Building2, Pencil, Trash2
+  MapPin, Camera, Clock, Sparkles, Building2, Pencil, Trash2
 } from 'lucide-react';
 import LocationPicker from '@/components/map/LocationPicker';
 
@@ -198,7 +198,7 @@ export default function ComplaintDetails() {
               <div>
                 <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Priority</p>
                 <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <AlertCircle className={`w-4 h-4 ${complaint.priority === 'high' || complaint.priority === 'critical' ? 'text-red-500' : 'text-slate-400'}`} />
+                  <AlertCircle className={`w-4 h-4 ${String(complaint.priority) === 'high' || String(complaint.priority) === 'critical' ? 'text-red-500' : 'text-slate-400'}`} />
                   <span className="capitalize">{complaint.priority || 'Medium'}</span>
                 </div>
               </div>

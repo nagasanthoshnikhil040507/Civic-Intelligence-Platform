@@ -33,7 +33,7 @@ export class AuthController {
         userAgent: req.headers['user-agent']
       };
 
-      const user = await authService.registerCitizen(payload, userService, auditLogService);
+      const user = await authService.registerUser(payload, 'citizen', userService, auditLogService);
 
       const tokens = authService.generateTokens({ userId: (user as any)._id || (user as any).id, role: user.role });
 
@@ -62,6 +62,90 @@ export class AuthController {
           }
         }
         return res.status(400).json({ success: false, message: msg });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * @route POST /api/v1/auth/register/officer
+   * @desc Registers a new officer
+   */
+  static async registerOfficer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = registerSchema.parse(req.body);
+      
+      const payload = {
+        ...validatedData,
+        phone: req.body.phone,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      };
+
+      const user = await authService.registerUser(payload, 'officer', userService, auditLogService);
+
+      const tokens = authService.generateTokens({ userId: (user as any)._id || (user as any).id, role: user.role });
+
+      // Set Secure Cookies
+      res.cookie('refreshToken', tokens.refreshToken, SecurityConfig.cookie);
+      res.cookie('accessToken', tokens.accessToken, {
+         ...SecurityConfig.cookie,
+         maxAge: 15 * 60 * 1000 // 15 mins
+      });
+
+      const responsePayload = new ApiResponse(201, {
+        user,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
+      }, 'Officer registered successfully.');
+      
+      return res.status(201).json(responsePayload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const firstError = error.errors[0];
+        return res.status(400).json({ success: false, message: firstError.message });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * @route POST /api/v1/auth/register/admin
+   * @desc Registers a new admin
+   */
+  static async registerAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = registerSchema.parse(req.body);
+      
+      const payload = {
+        ...validatedData,
+        phone: req.body.phone,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      };
+
+      const user = await authService.registerUser(payload, 'admin', userService, auditLogService);
+
+      const tokens = authService.generateTokens({ userId: (user as any)._id || (user as any).id, role: user.role });
+
+      // Set Secure Cookies
+      res.cookie('refreshToken', tokens.refreshToken, SecurityConfig.cookie);
+      res.cookie('accessToken', tokens.accessToken, {
+         ...SecurityConfig.cookie,
+         maxAge: 15 * 60 * 1000 // 15 mins
+      });
+
+      const responsePayload = new ApiResponse(201, {
+        user,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
+      }, 'Admin registered successfully.');
+      
+      return res.status(201).json(responsePayload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const firstError = error.errors[0];
+        return res.status(400).json({ success: false, message: firstError.message });
       }
       next(error);
     }
@@ -135,6 +219,7 @@ export class AuthController {
 
       const tokens = await authService.refreshTokens(
         token, 
+        userService,
         auditLogService, 
         req.ip, 
         req.headers['user-agent']

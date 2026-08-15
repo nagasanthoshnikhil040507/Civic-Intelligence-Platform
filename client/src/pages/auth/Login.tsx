@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { AuthService } from '@/services/auth.service';
 
 const loginSchema = z.object({
@@ -24,8 +24,15 @@ export default function Login() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setServerError('');
-      await AuthService.login(data);
-      navigate('/dashboard', { replace: true });
+      const response = await AuthService.login(data);
+      const userRole = response.data?.user?.role;
+      if (userRole === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (userRole === 'officer') {
+        navigate('/officer', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (error: any) {
       setServerError(error.response?.data?.message || 'Invalid email or password');
     }
@@ -88,6 +95,13 @@ export default function Login() {
         Don't have an account?{' '}
         <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
           Create an account
+        </Link>
+      </div>
+      
+      <div className="pt-4 flex justify-center border-t border-slate-100">
+        <Link to="/" className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Return to Main Portal
         </Link>
       </div>
     </div>

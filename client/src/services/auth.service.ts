@@ -8,6 +8,20 @@ export const AuthService = {
     useAuthStore.getState().login(user, accessToken);
     return response.data;
   },
+
+  async registerOfficer(data: any) {
+    const response = await api.post('/auth/register/officer', data);
+    const { user, accessToken } = response.data.data;
+    useAuthStore.getState().login(user, accessToken);
+    return response.data;
+  },
+
+  async registerAdmin(data: any) {
+    const response = await api.post('/auth/register/admin', data);
+    const { user, accessToken } = response.data.data;
+    useAuthStore.getState().login(user, accessToken);
+    return response.data;
+  },
   
   async login(credentials: any) {
     const response = await api.post('/auth/login', credentials);
@@ -25,6 +39,15 @@ export const AuthService = {
   },
 
   async initializeAuth() {
+    const state = useAuthStore.getState();
+
+    // 1. If we already have a persisted valid session, keep them authenticated
+    if (state.isAuthenticated && state.accessToken && state.user) {
+      state.setLoading(false);
+      return;
+    }
+
+    // 2. Otherwise, attempt to restore via refresh token cookie
     try {
       const response = await api.post('/auth/refresh');
       const { accessToken, user } = response.data.data;

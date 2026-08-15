@@ -31,7 +31,7 @@ describe('AuthService - Registration', () => {
       toObject: function() { return this; }
     });
 
-    const result = await authService.registerCitizen(payload, mockUserService, mockAuditLogService);
+    const result = await authService.registerUser(payload, 'citizen', mockUserService, mockAuditLogService);
 
     expect(result).toBeDefined();
     expect(result.passwordHash).toBeUndefined();
@@ -49,7 +49,7 @@ describe('AuthService - Registration', () => {
     };
 
     await expect(
-      authService.registerCitizen(payload, mockUserService, mockAuditLogService)
+      authService.registerUser(payload, 'citizen', mockUserService, mockAuditLogService)
     ).rejects.toThrow(ApiError);
     
     expect(mockUserService.createUser).not.toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('AuthService - Registration', () => {
     mockUserService.createUser.mockRejectedValue(new ApiError(409, 'User with this email already exists'));
 
     await expect(
-      authService.registerCitizen(payload, mockUserService, mockAuditLogService)
+      authService.registerUser(payload, 'citizen', mockUserService, mockAuditLogService)
     ).rejects.toThrow(ApiError);
   });
 });

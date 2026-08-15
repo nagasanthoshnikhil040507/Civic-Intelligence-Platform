@@ -9,6 +9,7 @@ jest.mock('../utils/blacklist');
 describe('AuthService - Refresh and Logout', () => {
   let authService: AuthService;
   let mockAuditLogService: any;
+  let mockUserService: any;
 
   beforeEach(() => {
     authService = new AuthService();
@@ -22,6 +23,10 @@ describe('AuthService - Refresh and Logout', () => {
       recordAction: jest.fn()
     };
     
+    mockUserService = {
+      findById: jest.fn().mockResolvedValue({ _id: 'u1', isDeleted: false, status: 'active' })
+    };
+
     jest.clearAllMocks();
   });
 
@@ -30,7 +35,7 @@ describe('AuthService - Refresh and Logout', () => {
     (JwtUtils.verifyRefreshToken as jest.Mock).mockReturnValue(mockPayload);
     (TokenBlacklist.isBlacklisted as jest.Mock).mockResolvedValue(false);
 
-    const result = await authService.refreshTokens('old-refresh-token', mockAuditLogService);
+    const result = await authService.refreshTokens('old-refresh-token', mockUserService, mockAuditLogService);
 
     expect(result.accessToken).toBe('new-access');
     expect(TokenBlacklist.blacklistSession).toHaveBeenCalledWith('s1', expect.any(Number));
@@ -46,7 +51,7 @@ describe('AuthService - Refresh and Logout', () => {
       throw new Error('jwt expired');
     });
 
-    await expect(authService.refreshTokens('bad-token', mockAuditLogService)).rejects.toThrow('Invalid or expired refresh token');
+    await expect(authService.refreshTokens('bad-token', mockUserService, mockAuditLogService)).rejects.toThrow('Invalid or expired refresh token');
   });
 
   it('should throw 401 if session is blacklisted', async () => {
@@ -54,7 +59,7 @@ describe('AuthService - Refresh and Logout', () => {
     (JwtUtils.verifyRefreshToken as jest.Mock).mockReturnValue(mockPayload);
     (TokenBlacklist.isBlacklisted as jest.Mock).mockResolvedValue(true);
 
-    await expect(authService.refreshTokens('revoked-token', mockAuditLogService)).rejects.toThrow('Session has been revoked');
+    await expect(authService.refreshTokens('revoked-token', mockUserService, mockAuditLogService)).rejects.toThrow('Session has been revoked');
   });
 
   it('should successfully logout and blacklist session', async () => {

@@ -84,9 +84,11 @@ app.use('/api/v1', routesV1);
 // Mount routes
 import authRoutes from './modules/auth/routes/auth.routes';
 import complaintRoutes from './modules/complaints/routes/complaint.routes';
+import adminRoutes from './modules/admin/routes/admin.routes';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/complaints', complaintRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Handle 404
 app.use(notFoundHandler);

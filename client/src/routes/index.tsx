@@ -10,6 +10,12 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 const Landing = lazy(() => import('@/pages/Landing'));
 const Login = lazy(() => import('@/pages/auth/Login'));
 const Register = lazy(() => import('@/pages/auth/Register'));
+const OfficerLogin = lazy(() => import('@/pages/auth/OfficerLogin'));
+const OfficerRegister = lazy(() => import('@/pages/auth/OfficerRegister'));
+const AdminLogin = lazy(() => import('@/pages/auth/AdminLogin'));
+const AdminRegister = lazy(() => import('@/pages/auth/AdminRegister'));
+const Unauthorized = lazy(() => import('@/pages/Unauthorized'));
+
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
 const Complaints = lazy(() => import('@/pages/dashboard/Complaints'));
 const ComplaintDetails = lazy(() => import('@/pages/dashboard/ComplaintDetails'));
@@ -18,16 +24,20 @@ const Analytics = lazy(() => import('@/pages/dashboard/Analytics'));
 const Profile = lazy(() => import('@/pages/dashboard/Profile'));
 const Settings = lazy(() => import('@/pages/dashboard/Settings'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
-const Unauthorized = lazy(() => import('@/pages/Unauthorized'));
 
 import OfficerLayout from '@/layouts/OfficerLayout';
-const OfficerLogin = lazy(() => import('@/pages/auth/OfficerLogin'));
-
 const OfficerDashboard = lazy(() => import('@/pages/officer/OfficerDashboard'));
 const OfficerComplaints = lazy(() => import('@/pages/officer/AllComplaints'));
 const OfficerAssigned = lazy(() => import('@/pages/officer/AssignedComplaints'));
 const OfficerComplaintDetails = lazy(() => import('@/pages/officer/ComplaintDetails'));
 // const OfficerDepartments = lazy(() => import('@/pages/officer/Departments')); // Coming soon
+
+import AdminLayout from '@/layouts/AdminLayout';
+const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
+const AdminComplaints = lazy(() => import('@/pages/admin/AdminComplaints'));
+const AdminComplaintDetails = lazy(() => import('@/pages/admin/AdminComplaintDetails'));
+const AdminUsersList = lazy(() => import('@/pages/admin/AdminUsersList'));
+const AdminUserDetails = lazy(() => import('@/pages/admin/AdminUserDetails'));
 
 const withSuspense = (Component: React.ComponentType) => (
   <Suspense fallback={<LoadingScreen />}>
@@ -53,6 +63,18 @@ export const router = createBrowserRouter([
     path: '/officer/login',
     element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(OfficerLogin)}</div>,
   },
+  {
+    path: '/officer/register',
+    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(OfficerRegister)}</div>,
+  },
+  {
+    path: '/admin/login',
+    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(AdminLogin)}</div>,
+  },
+  {
+    path: '/admin/register',
+    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(AdminRegister)}</div>,
+  },
   { path: '/unauthorized', element: withSuspense(Unauthorized) },
   {
     path: '/dashboard',
@@ -74,7 +96,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/officer',
-    element: <ProtectedRoute allowedRoles={['officer', 'admin']} />,
+    element: <ProtectedRoute allowedRoles={['officer']} />,
     children: [
       {
         element: <OfficerLayout />,
@@ -83,6 +105,25 @@ export const router = createBrowserRouter([
           { path: 'complaints', element: withSuspense(OfficerComplaints) },
           { path: 'assigned', element: withSuspense(OfficerAssigned) },
           { path: 'complaints/:id', element: withSuspense(OfficerComplaintDetails) },
+          { path: 'profile', element: withSuspense(Profile) },
+          { path: 'settings', element: withSuspense(Settings) },
+        ]
+      }
+    ]
+  },
+  {
+    path: '/admin',
+    element: <ProtectedRoute allowedRoles={['admin']} />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: withSuspense(AdminDashboard) },
+          { path: 'complaints', element: withSuspense(AdminComplaints) },
+          { path: 'complaints/:id', element: withSuspense(AdminComplaintDetails) },
+          { path: 'users/citizens', element: withSuspense(AdminUsersList) },
+          { path: 'users/officers', element: withSuspense(AdminUsersList) },
+          { path: 'users/:id', element: withSuspense(AdminUserDetails) },
           { path: 'profile', element: withSuspense(Profile) },
           { path: 'settings', element: withSuspense(Settings) },
         ]

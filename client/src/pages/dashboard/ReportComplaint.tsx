@@ -37,7 +37,7 @@ export default function ReportComplaint() {
   const [images, setImages] = useState<File[]>([]);
   const [imageError, setImageError] = useState('');
 
-  const { register, handleSubmit, formState: { errors, isValid }, trigger, getValues, setValue } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, trigger, getValues, setValue } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: 'onTouched'
   });
