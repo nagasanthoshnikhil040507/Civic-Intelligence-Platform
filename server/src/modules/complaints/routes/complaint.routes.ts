@@ -3,6 +3,7 @@ import { ComplaintController } from '../controllers/complaint.controller';
 import { authenticate } from '../../auth/middleware/auth.middleware';
 import { requireRole as enforceRole } from '../../auth/middleware/rbac.middleware';
 import { Role } from '../../auth/constants/roles';
+import { upload } from '../../../middlewares/upload';
 
 const router = Router();
 
@@ -18,11 +19,10 @@ router.get('/search-area', ComplaintController.getComplaintsInArea);
 router.get('/:id', ComplaintController.getById);
 
 // Citizen Actions
+router.post('/analyze-pre-submission', enforceRole([Role.CITIZEN, Role.ADMIN]), upload.array('images', 5), ComplaintController.analyzePreSubmission);
 router.post('/', enforceRole([Role.CITIZEN, Role.ADMIN]), ComplaintController.create);
 router.patch('/:id', enforceRole([Role.CITIZEN, Role.ADMIN]), ComplaintController.update);
 router.delete('/:id', enforceRole([Role.CITIZEN, Role.ADMIN]), ComplaintController.delete);
-
-import { upload } from '../../../middlewares/upload';
 
 // Officer Actions
 router.patch('/:id/assign', enforceRole([Role.OFFICER, Role.ADMIN]), ComplaintController.assign);

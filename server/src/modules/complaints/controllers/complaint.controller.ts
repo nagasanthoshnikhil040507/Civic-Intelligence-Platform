@@ -5,8 +5,13 @@ import { AuditLogService } from '../../../services/AuditLogService';
 import { ComplaintRepository } from '../../../database/repositories/ComplaintRepository';
 import { AuditLogRepository } from '../../../database/repositories/AuditLogRepository';
 import { createComplaintSchema, updateComplaintSchema, queryComplaintSchema } from '../validators/complaints.validator';
+import { ComplaintRepository } from '../../../database/repositories/ComplaintRepository';
+import { AuditLogRepository } from '../../../database/repositories/AuditLogRepository';
+import { createComplaintSchema, updateComplaintSchema, queryComplaintSchema } from '../validators/complaints.validator';
 import { ApiError } from '../../../utils/ApiError';
 import { ApiResponse } from '../../../utils/ApiResponse';
+import fs from 'fs';
+import path from 'path';
 
 const complaintRepository = new ComplaintRepository();
 const auditLogRepository = new AuditLogRepository();
@@ -20,7 +25,25 @@ export class ComplaintController {
       const validatedData = createComplaintSchema.parse(req.body);
       const userId = req.user!.userId;
 
-      const complaint = await complaintService.createCitizenComplaint(userId, validatedData);
+      // Extract aiAnalysis if present
+      const { aiAnalysis, ...complaintData } = validatedData;
+      
+      const complaint = await complaintService.createCitizenComplaint(userId, complaintData);
+
+      // If pre-submission aiAnalysis exists, update it immediately
+      if (aiAnalysis) {
+        await complaintService.updateComplaint(complaint.id, { $set: { aiAnalysis } } as any);
+        if (aiAnalysis.priority !== undefined) {
+          await complaintService.updateComplaint(complaint.id, { $set: { priority: aiAnalysis.priority } } as any);
+        }
+        if (aiAnalysis.confidence !== undefined) {
+          await complaintService.updateComplaint(complaint.id, { $set: { confidenceScore: aiAnalysis.confidence } } as any);
+        }
+        if (aiAnalysis.matchedComplaintId) {
+          await complaintService.updateComplaint(complaint.id, { $set: { linkedComplaintId: aiAnalysis.matchedComplaintId } } as any);
+        }
+        complaint.aiAnalysis = aiAnalysis as any;
+      }
 
       await auditLogService.recordEntityChange(
         'Complaint',
@@ -236,16 +259,17 @@ export class ComplaintController {
 
       res.status(200).json(new ApiResponse(200, complaint, 'Images uploaded successfully'));
 
-      // Trigger AI Analysis in the background (Non-blocking) ONLY after images are uploaded
-      try {
-        const { AIService } = require('../../../services/AIService');
-        const aiService = new AIService(complaintService);
-        aiService.analyzeComplaint(complaint).catch((err: any) => {
-          // Errors are already logged and handled inside AIService
-          // We just catch them here to prevent UnhandledPromiseRejection
-        });
-      } catch (aiError) {
-        console.error('[ComplaintController] Failed to initialize background AI service:', aiError);
+      // Trigger AI Analysis in the background (Non-blocking) ONLY if not already analyzed
+      if (!complaint.aiAnalysis?.analyzedAt) {
+        try {
+          const { AIService } = require('../../../services/AIService');
+          const aiService = new AIService(complaintService);
+          aiService.analyzeComplaint(complaint).catch((err: any) => {
+            // Errors are already logged and handled inside AIService
+          });
+        } catch (aiError) {
+          console.error('[ComplaintController] Failed to initialize background AI service:', aiError);
+        }
       }
     } catch (error: any) {
       console.error('--- DEBUG: Error in uploadImages ---');
@@ -320,7 +344,6 @@ export class ComplaintController {
       const complaint = await complaintService.getById(req.params.id);
 
       const { AIService } = require('../../../services/AIService');
-      // Instantiate AIService with existing complaintService
       const aiService = new AIService(complaintService);
       
       const updatedComplaint = await aiService.analyzeComplaint(complaint);
@@ -338,6 +361,72 @@ export class ComplaintController {
       res.status(200).json(new ApiResponse(200, updatedComplaint, 'AI analysis completed successfully'));
     } catch (error) {
       next(error);
+    }
+  }
+
+  static async analyzePreSubmission(req: Request, res: Response, next: NextFunction) {
+    let tempImagePaths: string[] = [];
+    try {
+      const { title, description, category, latitude, longitude } = req.body;
+      
+      if (!latitude || !longitude) {
+        throw new ApiError(400, "Latitude and longitude are required for analysis.");
+      }
+
+      // 1. Process temporary files via multer
+      if (req.files && Array.isArray(req.files)) {
+        req.files.forEach(file => {
+          tempImagePaths.push(file.path);
+        });
+      }
+      
+      // 2. Prepare payload for FastAPI AI Service
+      const aiPayload = {
+        complaintId: "temp_pre_submit",
+        imageUrls: tempImagePaths,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        description: description || "",
+        title: title || "",
+        category: category || ""
+      };
+      
+      // 3. Call AI Service directly
+      const { config } = require('../../../config/env');
+      const axios = require('axios');
+      
+      const aiUrl = config.aiServiceUrl || 'http://127.0.0.1:8000';
+      const fastApiUrl = aiUrl.replace('localhost', '127.0.0.1');
+      
+      const response = await axios.post(`${fastApiUrl}/api/v1/analyze`, aiPayload, { timeout: 30000 });
+      const prediction = response.data;
+      
+      // Transform to aiAnalysis format
+      const aiAnalysisResult = {
+        ...prediction,
+        analyzedAt: new Date().toISOString(),
+        garbageDetected: prediction.categoryPrediction === 'Garbage'
+      };
+      
+      res.status(200).json(new ApiResponse(200, aiAnalysisResult, 'Pre-submission AI analysis completed'));
+    } catch (error: any) {
+      console.error('[ComplaintController] analyzePreSubmission failed:', error.message || error);
+      res.status(200).json(new ApiResponse(200, {
+        processingStatus: 'FAILED',
+        message: 'AI analysis is temporarily unavailable. You can still submit your complaint normally.',
+        duplicateDetected: false
+      }, 'AI analysis failed gracefully'));
+    } finally {
+      // Clean up temp files
+      tempImagePaths.forEach(filePath => {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (e) {
+          console.error(`Failed to delete temp file ${filePath}:`, e);
+        }
+      });
     }
   }
 }

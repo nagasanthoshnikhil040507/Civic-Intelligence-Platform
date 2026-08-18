@@ -208,3 +208,58 @@ export const updateUserStatus = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };
+
+export const getAiInsights = async (req: Request, res: Response) => {
+  try {
+    // 1. Category Trends
+    const categoryTrends = await Complaint.aggregate([
+      { $match: { isDeleted: false } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // 2. High Priority Unresolved
+    const highPriorityUnresolved = await Complaint.find({
+      isDeleted: false,
+      status: { $nin: ['resolved', 'closed', 'rejected'] },
+      $or: [
+        { priority: { $in: ['high', 'critical'] } },
+        { 'aiAnalysis.priority': { $gte: 75 } } // Support for numeric AI priority
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .populate('citizenId', 'firstName lastName');
+
+    // 3. Duplicate Intelligence
+    const duplicateCount = await Complaint.countDocuments({
+      isDeleted: false,
+      'aiAnalysis.duplicateDetected': true
+    });
+
+    // 4. AI Processed Overview
+    const totalComplaints = await Complaint.countDocuments({ isDeleted: false });
+    const aiProcessedCount = await Complaint.countDocuments({
+      isDeleted: false,
+      'aiAnalysis.analyzedAt': { $exists: true, $ne: null }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        categoryTrends,
+        highPriorityUnresolved,
+        duplicateIntelligence: {
+          totalDuplicates: duplicateCount
+        },
+        aiOverview: {
+          totalComplaints,
+          aiProcessedCount,
+          processingRate: totalComplaints > 0 ? (aiProcessedCount / totalComplaints) * 100 : 0
+        }
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Server error retrieving AI insights', error: error.message });
+  }
+};

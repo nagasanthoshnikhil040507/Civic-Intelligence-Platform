@@ -9,7 +9,9 @@ from app.utils.logger import logger
 from app.pipelines.image_classification.classifier import ImageClassificationPipeline
 from app.pipelines.severity_prediction.pipeline import SeverityPredictionPipeline
 from app.pipelines.priority_prediction.pipeline import PriorityPredictionPipeline
+from app.pipelines.priority_prediction.pipeline import PriorityPredictionPipeline
 from app.pipelines.duplicate_detection.pipeline import DuplicateComplaintDetectionPipeline
+from app.pipelines.summarization.pipeline import SummarizationPipeline
 
 router = APIRouter()
 
@@ -20,7 +22,8 @@ class AnalyzeRequest(BaseModel):
 # Global singletons for the router
 classification_pipeline = ImageClassificationPipeline(model_name="civic_classifier")
 severity_pipeline = SeverityPredictionPipeline(model_name="severity_prediction")
-priority_pipeline = PriorityPredictionPipeline(model_name="priority_prediction")
+priority_pipeline = PriorityPredictionPipeline(model_name="priority_prediction")priority_pipeline = PriorityPredictionPipeline(model_name="priority_prediction")
+summary_pipeline = SummarizationPipeline()
 
 from app.config.settings import get_settings
 settings = get_settings()
@@ -41,8 +44,11 @@ async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
     try:
         body = await raw_request.json()
         latitude = body.get("latitude")
+        latitude = body.get("latitude")
         longitude = body.get("longitude")
         description = body.get("description", "")
+        title = body.get("title", "")
+        category = body.get("category", "")
         logger.info(f"Input lat: {latitude}, lon: {longitude}, desc length: {len(description)}")
     except Exception as e:
         logger.error(f"Failed to read raw JSON for lat/lon/desc: {e}")
@@ -69,6 +75,7 @@ async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
     }
     if latitude is not None and longitude is not None and image_path:
         try:
+            # If complaintId is "temp_pre_submit", we pass it to avoid self-match logic errors, but it won't match anyway.
             duplicate_result = await asyncio.to_thread(duplicate_pipeline.run, request.imageUrls, float(latitude), float(longitude), request.complaintId, description)
             logger.info(f"Output Duplicate Detection: {duplicate_result}")
         except Exception as e:
@@ -112,6 +119,17 @@ async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
     logger.info(f"--- STAGE 5: Department (Static) ---")
     final_result["departmentRecommendation"] = "Sanitation Department"
     
+    # 6. Summarization
+    logger.info(f"--- STAGE 6: Summarization ---")
+    t0 = time.time()
+    try:
+        summary_result = summary_pipeline.run(title=title, description=description, category=final_result.get("categoryPrediction", category))
+        logger.info(f"Output Summary: {summary_result}")
+    except Exception as e:
+        logger.error(f"EXCEPTION in Summary: {e}\n{traceback.format_exc()}")
+        summary_result = "Summary generation failed."
+    logger.info(f"--- COMPLETE STAGE 6 ({time.time()-t0:.2f}s) ---")
+    
     end_time = time.time()
     total_time_ms = (end_time - start_time) * 1000
     
@@ -141,6 +159,7 @@ async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
     response["duplicateDetected"] = duplicate_result.get("duplicateDetected", False)
     response["matchedComplaintId"] = duplicate_result.get("matchedComplaintId", None)
     response["similarity"] = duplicate_result.get("similarity", 0)
+    response["summary"] = summary_result
         
     logger.info(f"Final AI API Response: {response}")
     return response

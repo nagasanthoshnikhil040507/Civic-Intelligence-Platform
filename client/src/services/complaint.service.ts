@@ -11,6 +11,7 @@ export interface CreateComplaintPayload {
   location: LocationPayload;
   address?: string;
   images?: string[];
+  aiAnalysis?: any;
 }
 
 export interface ComplaintResponse {
@@ -65,6 +66,15 @@ export interface ComplaintResponse {
 }
 
 export class ComplaintService {
+  static async analyzePreSubmission(payload: FormData): Promise<any> {
+    const response = await api.post('/complaints/analyze-pre-submission', payload, {
+      headers: {
+        'Content-Type': undefined
+      }
+    });
+    return response.data.data;
+  }
+
   static async create(payload: CreateComplaintPayload): Promise<ComplaintResponse> {
     const response = await api.post('/complaints', payload);
     return response.data.data;

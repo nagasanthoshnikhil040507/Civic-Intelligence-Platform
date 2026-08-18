@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, User, Settings, LogOut, Menu, FileText, Users } from 'lucide-react';
+import { Shield, LayoutDashboard, User, Settings, LogOut, Menu, FileText, Users, BrainCircuit } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useLogout } from '@/hooks/useLogout';
 
@@ -10,6 +10,7 @@ export default function AdminLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'AI Insights', path: '/admin/insights', icon: BrainCircuit },
     { name: 'Complaints', path: '/admin/complaints', icon: FileText },
     { name: 'Citizens', path: '/admin/users/citizens', icon: Users },
     { name: 'Officers', path: '/admin/users/officers', icon: Shield },

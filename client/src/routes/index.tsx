@@ -38,6 +38,7 @@ const AdminComplaints = lazy(() => import('@/pages/admin/AdminComplaints'));
 const AdminComplaintDetails = lazy(() => import('@/pages/admin/AdminComplaintDetails'));
 const AdminUsersList = lazy(() => import('@/pages/admin/AdminUsersList'));
 const AdminUserDetails = lazy(() => import('@/pages/admin/AdminUserDetails'));
+const AdminInsights = lazy(() => import('@/pages/admin/AdminInsights'));
 
 const withSuspense = (Component: React.ComponentType) => (
   <Suspense fallback={<LoadingScreen />}>
@@ -124,6 +125,7 @@ export const router = createBrowserRouter([
           { path: 'users/citizens', element: withSuspense(AdminUsersList) },
           { path: 'users/officers', element: withSuspense(AdminUsersList) },
           { path: 'users/:id', element: withSuspense(AdminUserDetails) },
+          { path: 'insights', element: withSuspense(AdminInsights) },
           { path: 'profile', element: withSuspense(Profile) },
           { path: 'settings', element: withSuspense(Settings) },
         ]

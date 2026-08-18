@@ -1,5 +1,19 @@
 import { z } from 'zod';
 
+export const aiAnalysisSchema = z.object({
+  garbageDetected: z.boolean().optional(),
+  confidence: z.number().optional(),
+  severity: z.string().optional(),
+  priority: z.number().optional(),
+  quantityEstimation: z.string().optional(),
+  duplicateDetected: z.boolean().optional(),
+  matchedComplaintId: z.string().optional(),
+  processingStatus: z.string().optional(),
+  analyzedAt: z.string().datetime().optional(),
+  message: z.string().optional(),
+  summary: z.string().optional()
+});
+
 export const createComplaintSchema = z.object({
   title: z.string().min(5).max(100),
   description: z.string().min(20).max(2000),
@@ -13,6 +27,7 @@ export const createComplaintSchema = z.object({
   }),
   address: z.string().optional(),
   images: z.array(z.string().url()).optional(),
+  aiAnalysis: aiAnalysisSchema.optional(),
 });
 
 export const updateComplaintSchema = z.object({

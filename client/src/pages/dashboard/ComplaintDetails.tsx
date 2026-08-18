@@ -4,7 +4,7 @@ import { ComplaintService, ComplaintResponse } from '@/services/complaint.servic
 import { useAuthStore } from '@/store/authStore';
 import { 
   Loader2, AlertCircle, ArrowLeft, Calendar, User, FileText, 
-  MapPin, Camera, Clock, Sparkles, Building2, Pencil, Trash2
+  MapPin, Camera, Clock, Sparkles, Building2, Pencil, Trash2, Activity
 } from 'lucide-react';
 import LocationPicker from '@/components/map/LocationPicker';
 
@@ -219,19 +219,51 @@ export default function ComplaintDetails() {
             </div>
           </div>
 
-          {/* AI Analysis Placeholder */}
-          <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl shadow-sm">
-            <h3 className="font-bold text-indigo-900 mb-2 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-500" />
-              AI Analysis
-            </h3>
-            <p className="text-sm text-indigo-700/80 mb-3">
-              Automated categorization, priority scoring, and department routing.
-            </p>
-            <div className="w-full py-2 border border-indigo-200 border-dashed rounded bg-indigo-100/50 text-center">
-              <p className="text-xs font-medium text-indigo-400 uppercase tracking-widest">(Phase 2.5)</p>
+          {/* AI Analysis */}
+          {complaint.aiAnalysis && complaint.aiAnalysis.processingStatus !== 'FAILED' ? (
+            <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl shadow-sm">
+              <h3 className="font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-500" />
+                AI Intelligence
+              </h3>
+              
+              <div className="space-y-4">
+                {complaint.aiAnalysis.summary && (
+                  <div>
+                    <span className="block text-xs font-medium text-indigo-500 mb-1 flex items-center gap-1">
+                      <FileText className="w-3 h-3"/> AI Summary
+                    </span>
+                    <p className="text-sm text-indigo-900 font-medium italic">"{complaint.aiAnalysis.summary}"</p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-indigo-100/50">
+                  <div>
+                    <span className="block text-xs font-medium text-indigo-500">Category Suggestion</span>
+                    <span className="text-sm font-semibold text-indigo-900">{complaint.aiAnalysis.garbageDetected ? 'Garbage' : complaint.category}</span>
+                  </div>
+                  {complaint.aiAnalysis.priority !== undefined && (
+                    <div>
+                      <span className="block text-xs font-medium text-indigo-500 flex items-center gap-1">
+                        <Activity className="w-3 h-3"/> Score
+                      </span>
+                      <span className="text-sm font-semibold text-indigo-900">{Math.round(Number(complaint.aiAnalysis.priority))}/100</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm">
+              <h3 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-slate-400" />
+                AI Analysis
+              </h3>
+              <p className="text-sm text-slate-500">
+                AI Intelligence was not available at the time of submission or is pending.
+              </p>
+            </div>
+          )}
 
           {/* Timeline Section */}
           <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">

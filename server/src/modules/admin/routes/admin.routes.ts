@@ -6,7 +6,8 @@ import {
   assignComplaint, 
   getUsers, 
   getUserDetails, 
-  updateUserStatus 
+  updateUserStatus,
+  getAiInsights
 } from '../controllers/admin.controller';
 import { authenticate } from '../../auth/middleware/auth.middleware';
 import { requireRole } from '../../auth/middleware/rbac.middleware';
@@ -19,6 +20,7 @@ router.use(authenticate);
 router.use(requireRole([Role.ADMIN]));
 
 router.get('/stats', getSystemStats);
+router.get('/ai-insights', getAiInsights);
 
 // Complaint Management
 router.get('/complaints', getComplaints);

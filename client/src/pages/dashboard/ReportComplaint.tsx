@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Check, Camera, MapPin, Loader2, Image as ImageIcon } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Camera, MapPin, Loader2, Image as ImageIcon, AlertTriangle, Sparkles, Activity, FileText } from 'lucide-react';
 
 import { ComplaintService } from '@/services/complaint.service';
 import LocationPicker from '@/components/map/LocationPicker';
@@ -36,6 +36,8 @@ export default function ReportComplaint() {
   const [serverError, setServerError] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [imageError, setImageError] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, trigger, getValues, setValue } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -58,6 +60,26 @@ export default function ReportComplaint() {
       }
     } else if (currentStep === 2) {
       isStepValid = await trigger(['location']);
+      if (isStepValid) {
+        setIsAnalyzing(true);
+        try {
+          const data = getValues();
+          const formData = new FormData();
+          formData.append('title', data.title);
+          formData.append('description', data.description);
+          formData.append('latitude', data.location[1].toString());
+          formData.append('longitude', data.location[0].toString());
+          images.forEach(img => formData.append('images', img));
+          
+          const result = await ComplaintService.analyzePreSubmission(formData);
+          setAiAnalysis(result);
+        } catch (error) {
+          console.error("AI Analysis failed:", error);
+          setAiAnalysis({ processingStatus: 'FAILED', message: 'AI Analysis temporarily unavailable.' });
+        } finally {
+          setIsAnalyzing(false);
+        }
+      }
     }
 
     if (!isStepValid) return;
@@ -84,7 +106,8 @@ export default function ReportComplaint() {
         location: {
           type: 'Point',
           coordinates: data.location
-        }
+        },
+        aiAnalysis: aiAnalysis?.processingStatus === 'FAILED' ? undefined : aiAnalysis
       });
       
       if (images && images.length > 0) {
@@ -229,10 +252,59 @@ export default function ReportComplaint() {
                     </div>
                     
                     <div className="bg-slate-50 rounded-lg p-6 space-y-6 border border-slate-200">
-                      <div>
-                        <h4 className="text-sm font-medium text-slate-500 mb-1">Title</h4>
-                        <p className="text-slate-900 font-medium">{getValues('title')}</p>
-                      </div>
+                      {isAnalyzing ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
+                          <h3 className="text-lg font-medium text-slate-900">AI Intelligence is analyzing your complaint...</h3>
+                          <p className="text-sm text-slate-500 mt-2">Checking for duplicates, estimating severity, and generating summary.</p>
+                        </div>
+                      ) : (
+                        <>
+                          {aiAnalysis?.duplicateDetected && (
+                            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3">
+                              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <h4 className="text-sm font-medium text-amber-900">Possible Duplicate Detected</h4>
+                                <p className="text-sm text-amber-700 mt-1">
+                                  We found a similar issue reported nearby ({(aiAnalysis.similarity * 100).toFixed(0)}% match). 
+                                  You can still submit your complaint, but this will be linked for faster resolution.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {aiAnalysis && aiAnalysis.processingStatus !== 'FAILED' && (
+                            <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-lg space-y-3">
+                              <h4 className="text-sm font-medium text-indigo-900 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-indigo-600" /> AI Suggestions
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                {aiAnalysis.categoryPrediction && (
+                                  <div>
+                                    <span className="block text-xs font-medium text-indigo-500">Suggested Category</span>
+                                    <span className="text-sm font-semibold text-indigo-900">{aiAnalysis.categoryPrediction}</span>
+                                  </div>
+                                )}
+                                {aiAnalysis.priority !== undefined && (
+                                  <div>
+                                    <span className="block text-xs font-medium text-indigo-500 flex items-center gap-1"><Activity className="w-3 h-3"/> Priority</span>
+                                    <span className="text-sm font-semibold text-indigo-900">{aiAnalysis.priority >= 75 ? 'High' : aiAnalysis.priority >= 40 ? 'Medium' : 'Low'} ({Math.round(aiAnalysis.priority)}/100)</span>
+                                  </div>
+                                )}
+                              </div>
+                              {aiAnalysis.summary && (
+                                <div className="mt-2 border-t border-indigo-100 pt-3">
+                                  <span className="block text-xs font-medium text-indigo-500 flex items-center gap-1 mb-1"><FileText className="w-3 h-3"/> AI Summary</span>
+                                  <p className="text-sm text-indigo-800 italic">{aiAnalysis.summary}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-500 mb-1">Title</h4>
+                            <p className="text-slate-900 font-medium">{getValues('title')}</p>
+                          </div>
                       
                       <div>
                         <h4 className="text-sm font-medium text-slate-500 mb-1">Description</h4>
@@ -261,6 +333,8 @@ export default function ReportComplaint() {
                           </div>
                         </div>
                       )}
+                      </>
+                    )}
                     </div>
                   </div>
                 )}
@@ -296,11 +370,11 @@ export default function ReportComplaint() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50"
-                >
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isAnalyzing}
+                    className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50"
+                  >
                   {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (

@@ -56,6 +56,7 @@ export interface IComplaint extends Document {
     analyzedAt?: Date;
     message?: string;
     totalInferenceTimeMs?: number;
+    summary?: string;
   };
   tags: string[];
   attachments: string[];
@@ -130,7 +131,8 @@ const complaintSchema = new Schema<IComplaint>(
       processingStatus: { type: String },
       analyzedAt: { type: Date },
       message: { type: String },
-      totalInferenceTimeMs: { type: Number }
+      totalInferenceTimeMs: { type: Number },
+      summary: { type: String }
     },
     tags: [{ type: String }],
     attachments: [{ type: String }],

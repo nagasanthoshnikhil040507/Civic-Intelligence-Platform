@@ -6,6 +6,11 @@ export const AdminService = {
     return res.data;
   },
 
+  getAiInsights: async () => {
+    const res = await api.get('/admin/ai-insights');
+    return res.data;
+  },
+
   getComplaints: async (params?: { page?: number; limit?: number; status?: string; category?: string; search?: string }) => {
     const res = await api.get('/admin/complaints', { params });
     return res.data;
