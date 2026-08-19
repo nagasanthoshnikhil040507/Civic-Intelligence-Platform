@@ -110,13 +110,18 @@ export default function ReportComplaint() {
         aiAnalysis: aiAnalysis?.processingStatus === 'FAILED' ? undefined : aiAnalysis
       });
       
+      if (!complaint || !complaint._id) {
+        throw new Error("Complaint was not confirmed as created by the server.");
+      }
+      
       if (images && images.length > 0) {
         await ComplaintService.uploadImages(complaint._id, images);
       }
 
       navigate('/dashboard/complaints', { replace: true });
     } catch (error: any) {
-      setServerError(error.response?.data?.message || 'Failed to submit complaint. Please try again.');
+      console.error("[FRONTEND] Complaint submission failed:", error);
+      setServerError(error.response?.data?.message || error.message || 'Failed to submit complaint. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -260,16 +265,58 @@ export default function ReportComplaint() {
                         </div>
                       ) : (
                         <>
-                          {aiAnalysis?.duplicateDetected && (
-                            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3">
-                              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                              <div>
-                                <h4 className="text-sm font-medium text-amber-900">Possible Duplicate Detected</h4>
-                                <p className="text-sm text-amber-700 mt-1">
-                                  We found a similar issue reported nearby ({(aiAnalysis.similarity * 100).toFixed(0)}% match). 
-                                  You can still submit your complaint, but this will be linked for faster resolution.
-                                </p>
+                          {aiAnalysis?.duplicateDetected && aiAnalysis.duplicateLevel === 'HIGH' && (
+                            <div className="bg-red-50 border-2 border-red-500 rounded-xl overflow-hidden shadow-sm relative mb-6">
+                              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-amber-500 to-red-500 bg-[length:200%_100%] animate-[gradient_2s_linear_infinite]" />
+                              <div className="p-5 flex items-start gap-4">
+                                <div className="bg-red-100 p-3 rounded-full animate-pulse">
+                                  <AlertTriangle className="w-8 h-8 text-red-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-lg font-bold text-red-900 flex items-center gap-2">
+                                    🚨 THIS ISSUE HAS ALREADY BEEN REPORTED
+                                  </h4>
+                                  <p className="text-sm text-red-800 mt-2 font-medium">
+                                    We found a highly similar complaint nearby. To avoid duplicate processing, an existing complaint is already being processed.
+                                  </p>
+                                  {aiAnalysis.confidence && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                                        Match confidence: {aiAnalysis.confidence.toFixed(0)}%
+                                      </span>
+                                      {aiAnalysis.matchedComplaintId && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200 font-mono">
+                                          Existing complaint: #{aiAnalysis.matchedComplaintId.slice(-6).toUpperCase()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  <p className="text-xs text-red-700 mt-3 bg-red-100/50 p-2 rounded border border-red-100 italic">
+                                    You can still submit your complaint, but it will be flagged as a duplicate and may not be assigned as a new separate issue.
+                                  </p>
+                                </div>
                               </div>
+                            </div>
+                          )}
+
+                          {aiAnalysis?.duplicateDetected && aiAnalysis.duplicateLevel === 'POSSIBLE' && (
+                            <div className="bg-amber-50 border border-amber-300 rounded-xl overflow-hidden shadow-sm relative mb-6 p-4 flex items-start gap-3">
+                                <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <h4 className="text-md font-bold text-amber-900">
+                                    Possible Duplicate Issue Detected
+                                  </h4>
+                                  <p className="text-sm text-amber-800 mt-1">
+                                    A somewhat similar complaint exists nearby. Ensure this is a distinct issue.
+                                  </p>
+                                  {aiAnalysis.confidence && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                        Match confidence: {aiAnalysis.confidence.toFixed(0)}%
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                             </div>
                           )}
                           

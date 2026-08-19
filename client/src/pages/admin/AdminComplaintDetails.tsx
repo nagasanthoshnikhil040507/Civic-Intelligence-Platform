@@ -177,6 +177,15 @@ export default function AdminComplaintDetails() {
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm text-slate-600 text-center">
                 Assignment locked. Complaint is {complaint.status}.
               </div>
+            ) : (complaint.aiAnalysis?.duplicateDetected && complaint.aiAnalysis?.duplicateLevel === 'HIGH') ? (
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200 text-sm text-red-600 text-center flex flex-col items-center gap-2">
+                <span className="font-bold">🚨 DUPLICATE COMPLAINT</span>
+                <span>Assignment unavailable because this complaint is a confirmed duplicate of an existing reported issue.</span>
+                <div className="flex gap-2 text-xs mt-1">
+                  <span className="px-2 py-0.5 bg-red-100 rounded-full font-semibold">Match: {complaint.aiAnalysis.confidence}%</span>
+                  {complaint.aiAnalysis.matchedComplaintId && <span className="px-2 py-0.5 bg-red-100 rounded-full font-mono">Ref: #{complaint.aiAnalysis.matchedComplaintId.slice(-6).toUpperCase()}</span>}
+                </div>
+              </div>
             ) : (
               <div className="space-y-4">
                 <div>

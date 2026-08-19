@@ -51,8 +51,8 @@ class DuplicateComplaintDetectionPipeline:
             return []
 
         try:
-            # 24-hour time window
-            time_threshold = datetime.utcnow() - timedelta(hours=24)
+            # 7-day time window for duplicate detection
+            time_threshold = datetime.utcnow() - timedelta(days=7)
             
             query = {
                 "createdAt": {"$gte": time_threshold},
@@ -83,38 +83,37 @@ class DuplicateComplaintDetectionPipeline:
             return 0.0
         return SequenceMatcher(None, desc1.lower(), desc2.lower()).ratio()
 
-    def run(self, image_urls: List[str], latitude: float, longitude: float, current_complaint_id: str, description: str = "") -> Dict[str, Any]:
+    def run(self, image_urls: List[str], latitude: float, longitude: float, current_complaint_id: str, description: str = "", title: str = "") -> Dict[str, Any]:
         logger.info(f"Running Duplicate Detection Pipeline for coordinates: [{latitude}, {longitude}]")
         
         response = {
             "duplicateDetected": False,
             "matchedComplaintId": None,
             "similarity": 0.0,
-            "reportCount": 1,
-            "complaintAgeHours": 0.0,
-            "confidenceScore": 0.0
+            "confidence": 0.0,
+            "duplicateLevel": "NONE",
+            "locationScore": 0.0,
+            "textScore": 0.0,
+            "imageScore": None
         }
         
-        import traceback
-        
-        debug_comparisons = []
+        # 1. Calculate new image hashes if available
         new_hashes = []
         for url in image_urls:
             h = self.calculate_image_hash(url)
             if h:
                 new_hashes.append(h)
                 
-        if not new_hashes:
-            logger.warning("Skipping duplicate detection: Failed to generate perceptual hash.")
+        # 2. Find nearby complaints
+        nearby_complaints = self.find_nearby_complaints(latitude, longitude, radius_meters=500)
+        logger.info(f"Found {len(nearby_complaints)} existing complaints within 500m radius and 7d window.")
+        
+        if not nearby_complaints:
             return response
             
-        nearby_complaints = self.find_nearby_complaints(latitude, longitude, radius_meters=30)
-        logger.info(f"Found {len(nearby_complaints)} existing complaints within 30m radius and 24h window.")
-        
         best_match_id = None
-        highest_image_sim = 0.0
-        highest_desc_sim = 0.0
-        best_match_complaint = None
+        best_confidence = 0.0
+        best_scores = {}
         
         for complaint in nearby_complaints:
             try:
@@ -122,56 +121,25 @@ class DuplicateComplaintDetectionPipeline:
                 if comp_id == current_complaint_id:
                     continue
                     
-                stored_hashes = []
-                stored_hash = complaint.get("imageHash")
-                if not stored_hash and "aiInsights" in complaint:
-                    stored_hash = complaint["aiInsights"].get("imageHash")
-                    
-                if stored_hash:
-                    stored_hashes.append(stored_hash)
-                elif "images" in complaint and complaint["images"]:
-                    for img in complaint["images"]:
-                        try:
-                            img_url = img.get("url") if isinstance(img, dict) else img
-                            if isinstance(img_url, dict):
-                                img_url = img_url.get("url")
-                            if img_url and isinstance(img_url, str):
-                                if img_url.startswith("/uploads/") or img_url.startswith("uploads/"):
-                                    base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
-                                    img_url = str(base_dir / "server" / "public" / img_url.lstrip("/"))
-                                h = self.calculate_image_hash(img_url)
-                                if h:
-                                    stored_hashes.append(h)
-                        except Exception as inner_e:
-                            pass
-                
-                # Image Similarity
-                max_sim_for_this_complaint = 0.0
-                for new_hash in new_hashes:
-                    for s_hash in stored_hashes:
-                        sim = self.compare_hashes(new_hash, s_hash)
-                        if sim > max_sim_for_this_complaint:
-                            max_sim_for_this_complaint = sim
-                            
-                # Description Similarity
-                stored_desc = complaint.get("description", "")
-                desc_sim = self.compare_description(description, stored_desc)
-                
-                logger.info(f"Comparing with {comp_id} -> Img Sim: {max_sim_for_this_complaint*100:.1f}%, Desc Sim: {desc_sim*100:.1f}%")
-                
-                debug_comparisons.append({
-                    "comp_id": comp_id,
-                    "img_sim": max_sim_for_this_complaint,
-                    "desc_sim": desc_sim,
-                    "new_hashes": new_hashes,
                     "stored_hashes": stored_hashes
                 })
                 
-                # Rule: Image >= 85% AND Desc >= 70%
-                if max_sim_for_this_complaint >= 0.85 and desc_sim >= 0.70:
-                    if max_sim_for_this_complaint > highest_image_sim:
-                        highest_image_sim = max_sim_for_this_complaint
-                        highest_desc_sim = desc_sim
+                # Dynamic Duplicate Rule:
+                # Rule A: Image >= 85%
+                # Rule B: Description >= 80%
+                # Rule C: Image >= 70% AND Description >= 60%
+                is_duplicate = False
+                if max_sim_for_this_complaint >= 0.85:
+                    is_duplicate = True
+                elif desc_sim >= 0.80:
+                    is_duplicate = True
+                elif max_sim_for_this_complaint >= 0.70 and desc_sim >= 0.60:
+                    is_duplicate = True
+
+                if is_duplicate:
+                    if max_sim_for_this_complaint > highest_image_sim or desc_sim > highest_desc_sim:
+                        highest_image_sim = max(highest_image_sim, max_sim_for_this_complaint)
+                        highest_desc_sim = max(highest_desc_sim, desc_sim)
                         best_match_id = comp_id
                         best_match_complaint = complaint
             except Exception as e:

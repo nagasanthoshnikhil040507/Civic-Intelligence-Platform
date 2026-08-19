@@ -132,7 +132,11 @@ const complaintSchema = new Schema<IComplaint>(
       analyzedAt: { type: Date },
       message: { type: String },
       totalInferenceTimeMs: { type: Number },
-      summary: { type: String }
+      summary: { type: String },
+      duplicateLevel: { type: String, enum: ['HIGH', 'POSSIBLE', 'NONE'] },
+      locationScore: { type: Number },
+      textScore: { type: Number },
+      imageScore: { type: Number }
     },
     tags: [{ type: String }],
     attachments: [{ type: String }],

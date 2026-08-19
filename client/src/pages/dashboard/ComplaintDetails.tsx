@@ -251,6 +251,16 @@ export default function ComplaintDetails() {
                     </div>
                   )}
                 </div>
+                
+                {complaint.aiAnalysis.duplicateDetected && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    <div>
+                      <span className="block text-xs font-bold text-red-900 uppercase">Duplicate Flagged</span>
+                      <span className="text-xs text-red-700">This complaint shares strong similarities with a nearby issue.</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

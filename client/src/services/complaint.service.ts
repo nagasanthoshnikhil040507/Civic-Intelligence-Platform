@@ -51,7 +51,13 @@ export interface ComplaintResponse {
     processingStatus?: string;
     analyzedAt?: string;
     message?: string;
-    totalInferenceTimeMs?: number;
+    summary?: string | null;
+    similarity?: number | null;
+    categoryPrediction?: string | null;
+    duplicateLevel?: "HIGH" | "POSSIBLE" | "NONE";
+    locationScore?: number;
+    textScore?: number;
+    imageScore?: number | null;
   };
   garbageQuantity?: 1 | 2 | 3;
   confidenceScore?: number;

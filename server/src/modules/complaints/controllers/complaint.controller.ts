@@ -5,9 +5,7 @@ import { AuditLogService } from '../../../services/AuditLogService';
 import { ComplaintRepository } from '../../../database/repositories/ComplaintRepository';
 import { AuditLogRepository } from '../../../database/repositories/AuditLogRepository';
 import { createComplaintSchema, updateComplaintSchema, queryComplaintSchema } from '../validators/complaints.validator';
-import { ComplaintRepository } from '../../../database/repositories/ComplaintRepository';
-import { AuditLogRepository } from '../../../database/repositories/AuditLogRepository';
-import { createComplaintSchema, updateComplaintSchema, queryComplaintSchema } from '../validators/complaints.validator';
+
 import { ApiError } from '../../../utils/ApiError';
 import { ApiResponse } from '../../../utils/ApiResponse';
 import fs from 'fs';
@@ -22,27 +20,41 @@ export class ComplaintController {
   
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const validatedData = createComplaintSchema.parse(req.body);
-      const userId = req.user!.userId;
-
-      // Extract aiAnalysis if present
-      const { aiAnalysis, ...complaintData } = validatedData;
+      console.log('[API] create complaint request received');
+      console.log('[API] DB Host:', process.env.MONGODB_URI?.split('@').pop()?.split('/')[0] || 'Unknown');
       
-      const complaint = await complaintService.createCitizenComplaint(userId, complaintData);
+      const validatedData = createComplaintSchema.parse(req.body);
+      console.log('[API] validation passed');
+      
+      const userId = req.user!.userId;
+      
+      // Clean up matchedComplaintId if it's null or empty string to prevent Mongoose CastError
+      if (validatedData.aiAnalysis) {
+        if (!validatedData.aiAnalysis.matchedComplaintId) {
+          delete validatedData.aiAnalysis.matchedComplaintId;
+        }
+      }
 
-      // If pre-submission aiAnalysis exists, update it immediately
-      if (aiAnalysis) {
-        await complaintService.updateComplaint(complaint.id, { $set: { aiAnalysis } } as any);
+      console.log('[API] creating complaint in database');
+      const complaint = await complaintService.createCitizenComplaint(userId, validatedData);
+      console.log(`[DB] complaint created with id: ${complaint.id}`);
+
+      // Extract aiAnalysis to set additional direct fields if needed
+      if (validatedData.aiAnalysis) {
+        const { aiAnalysis } = validatedData;
+        const updates: any = {};
         if (aiAnalysis.priority !== undefined) {
-          await complaintService.updateComplaint(complaint.id, { $set: { priority: aiAnalysis.priority } } as any);
+          updates.priority = aiAnalysis.priority;
         }
         if (aiAnalysis.confidence !== undefined) {
-          await complaintService.updateComplaint(complaint.id, { $set: { confidenceScore: aiAnalysis.confidence } } as any);
+          updates.confidenceScore = aiAnalysis.confidence;
         }
         if (aiAnalysis.matchedComplaintId) {
-          await complaintService.updateComplaint(complaint.id, { $set: { linkedComplaintId: aiAnalysis.matchedComplaintId } } as any);
+          updates.linkedComplaintId = aiAnalysis.matchedComplaintId;
         }
-        complaint.aiAnalysis = aiAnalysis as any;
+        if (Object.keys(updates).length > 0) {
+          await complaintService.updateComplaint(complaint.id, { $set: updates } as any);
+        }
       }
 
       await auditLogService.recordEntityChange(
@@ -58,10 +70,12 @@ export class ComplaintController {
       res.status(201).json(new ApiResponse(201, complaint, 'Complaint created successfully'));
 
     } catch (error) {
+      console.error('[API] create complaint failed:', error);
       if (error instanceof ZodError) {
+        console.error('[API] validation failed:', error.errors);
         return next(new ApiError(400, `Validation Error: ${error.errors.map(e => e.message).join(', ')}`));
       }
-      next(error);
+      return next(error);
     }
   }
 
@@ -145,7 +159,12 @@ export class ComplaintController {
       const validatedData = assignComplaintSchema.parse(req.body);
       const officerId = req.user!.userId; // The one assigning
 
-      let complaint;
+      let complaint = await complaintService.getById(req.params.id);
+      
+      if (complaint.aiAnalysis?.duplicateDetected && complaint.aiAnalysis?.duplicateLevel === 'HIGH') {
+        throw new ApiError(409, 'Assignment unavailable because this complaint is a confirmed duplicate of an existing reported issue.');
+      }
+
       if (validatedData.departmentId) {
         complaint = await complaintService.assignDepartment(req.params.id, validatedData.departmentId, officerId);
       } else if (validatedData.officerId) {

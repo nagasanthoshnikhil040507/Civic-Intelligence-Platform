@@ -1,17 +1,23 @@
 import { z } from 'zod';
 
 export const aiAnalysisSchema = z.object({
-  garbageDetected: z.boolean().optional(),
-  confidence: z.number().optional(),
-  severity: z.string().optional(),
-  priority: z.number().optional(),
-  quantityEstimation: z.string().optional(),
-  duplicateDetected: z.boolean().optional(),
-  matchedComplaintId: z.string().optional(),
-  processingStatus: z.string().optional(),
-  analyzedAt: z.string().datetime().optional(),
-  message: z.string().optional(),
-  summary: z.string().optional()
+  garbageDetected: z.boolean().nullish(),
+  confidence: z.number().nullish(),
+  severity: z.string().nullish(),
+  priority: z.number().nullish(),
+  quantityEstimation: z.string().nullish(),
+  duplicateDetected: z.boolean().nullish(),
+  matchedComplaintId: z.string().nullish(),
+  processingStatus: z.string().nullish(),
+  analyzedAt: z.string().datetime().nullish(),
+  message: z.string().nullish(),
+  summary: z.string().nullish(),
+  similarity: z.number().nullish(),
+  categoryPrediction: z.string().nullish(),
+  duplicateLevel: z.enum(["HIGH", "POSSIBLE", "NONE"]).nullish(),
+  locationScore: z.number().nullish(),
+  textScore: z.number().nullish(),
+  imageScore: z.number().nullish()
 });
 
 export const createComplaintSchema = z.object({
