@@ -11,3 +11,4 @@ test_query.py
 test-*.js
 create_index.js
 phase3-validator.js
+server/audit.js
