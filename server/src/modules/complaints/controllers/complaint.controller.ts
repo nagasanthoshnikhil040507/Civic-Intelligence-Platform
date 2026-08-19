@@ -20,26 +20,38 @@ export class ComplaintController {
   
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      console.log('[API] create complaint request received');
-      console.log('[API] DB Host:', process.env.MONGODB_URI?.split('@').pop()?.split('/')[0] || 'Unknown');
+      console.log('\n[COMPLAINT DEBUG] request received');
+      
+      const dbUri = process.env.MONGODB_URI || '';
+      const dbName = dbUri.split('/').pop()?.split('?')[0] || 'Unknown';
+      console.log(`[COMPLAINT DEBUG] database: ${dbName}`);
       
       const validatedData = createComplaintSchema.parse(req.body);
-      console.log('[API] validation passed');
-      
       const userId = req.user!.userId;
       
-      // Clean up matchedComplaintId if it's null or empty string to prevent Mongoose CastError
       if (validatedData.aiAnalysis) {
         if (!validatedData.aiAnalysis.matchedComplaintId) {
           delete validatedData.aiAnalysis.matchedComplaintId;
         }
       }
 
-      console.log('[API] creating complaint in database');
+      console.log('[COMPLAINT DEBUG] creating complaint');
       const complaint = await complaintService.createCitizenComplaint(userId, validatedData);
-      console.log(`[DB] complaint created with id: ${complaint.id}`);
+      console.log(`[COMPLAINT DEBUG] created _id: ${complaint.id}`);
 
-      // Extract aiAnalysis to set additional direct fields if needed
+      // READ-AFTER-WRITE VERIFICATION
+      const mongoose = require('mongoose');
+      console.log('\n[ATLAS VERIFY]');
+      console.log(`host: ${mongoose.connection.host}`);
+      console.log(`database: ${mongoose.connection.name}`);
+      const model = mongoose.model('Complaint');
+      console.log(`collection: ${model.collection.name}`);
+      console.log(`createdId: ${complaint.id}`);
+      console.log(`createdTitle: ${complaint.title}`);
+      
+      const verification = await model.findById(complaint.id);
+      console.log(`readAfterWrite: ${verification ? 'FOUND' : 'NOT FOUND'}\n`);
+
       if (validatedData.aiAnalysis) {
         const { aiAnalysis } = validatedData;
         const updates: any = {};
@@ -67,12 +79,13 @@ export class ComplaintController {
         req.headers['user-agent']
       );
 
+      console.log('[COMPLAINT DEBUG] response sent: 201');
       res.status(201).json(new ApiResponse(201, complaint, 'Complaint created successfully'));
 
-    } catch (error) {
-      console.error('[API] create complaint failed:', error);
+    } catch (error: any) {
+      console.error('\n[COMPLAINT DEBUG] ERROR in create:');
+      console.error(error.stack || error);
       if (error instanceof ZodError) {
-        console.error('[API] validation failed:', error.errors);
         return next(new ApiError(400, `Validation Error: ${error.errors.map(e => e.message).join(', ')}`));
       }
       return next(error);
@@ -395,9 +408,13 @@ export class ComplaintController {
       // 1. Process temporary files via multer
       if (req.files && Array.isArray(req.files)) {
         req.files.forEach(file => {
-          tempImagePaths.push(file.path);
+          if (file && file.path) {
+            tempImagePaths.push(file.path);
+          }
         });
       }
+      
+      tempImagePaths = tempImagePaths.filter(url => url !== null && url !== undefined && url !== "null");
       
       // 2. Prepare payload for FastAPI AI Service
       const aiPayload = {

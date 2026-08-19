@@ -9,7 +9,6 @@ from app.utils.logger import logger
 from app.pipelines.image_classification.classifier import ImageClassificationPipeline
 from app.pipelines.severity_prediction.pipeline import SeverityPredictionPipeline
 from app.pipelines.priority_prediction.pipeline import PriorityPredictionPipeline
-from app.pipelines.priority_prediction.pipeline import PriorityPredictionPipeline
 from app.pipelines.duplicate_detection.pipeline import DuplicateComplaintDetectionPipeline
 from app.pipelines.summarization.pipeline import SummarizationPipeline
 
@@ -22,7 +21,7 @@ class AnalyzeRequest(BaseModel):
 # Global singletons for the router
 classification_pipeline = ImageClassificationPipeline(model_name="civic_classifier")
 severity_pipeline = SeverityPredictionPipeline(model_name="severity_prediction")
-priority_pipeline = PriorityPredictionPipeline(model_name="priority_prediction")priority_pipeline = PriorityPredictionPipeline(model_name="priority_prediction")
+priority_pipeline = PriorityPredictionPipeline(model_name="priority_prediction")
 summary_pipeline = SummarizationPipeline()
 
 from app.config.settings import get_settings

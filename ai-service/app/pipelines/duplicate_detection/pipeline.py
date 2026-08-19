@@ -17,6 +17,19 @@ class DuplicateComplaintDetectionPipeline:
             self.client = pymongo.MongoClient(db_uri, serverSelectionTimeoutMS=2000)
             self.db = self.client[db_name]
             self.collection = self.db["complaints"]
+            
+            # Temporary startup verification logging
+            host_only = "Unknown"
+            if "@" in db_uri:
+                host_only = db_uri.split("@")[1].split("/")[0]
+            elif "://" in db_uri:
+                host_only = db_uri.split("://")[1].split("/")[0]
+                
+            print("\n[DUPLICATE DB VERIFY]")
+            print(f"mongodbHost: {host_only}")
+            print(f"database: {db_name}")
+            print("collection: complaints\n")
+            
             logger.info("DuplicateDetectionPipeline successfully initialized MongoDB connection.")
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
@@ -66,8 +79,15 @@ class DuplicateComplaintDetectionPipeline:
                     }
                 }
             }
+            
             cursor = self.collection.find(query)
-            return list(cursor)
+            candidates = list(cursor)
+            
+            print(f"\n[DUPLICATE DB CHECK]")
+            print(f"candidateCollectionCount: {len(candidates)}")
+            print(f"queryCoordinates: [{longitude}, {latitude}]\n")
+            
+            return candidates
         except Exception as e:
             logger.error(f"Error executing geospatial 2dsphere query: {e}")
             return []
@@ -121,65 +141,89 @@ class DuplicateComplaintDetectionPipeline:
                 if comp_id == current_complaint_id:
                     continue
                     
-                    "stored_hashes": stored_hashes
-                })
-                
-                # Dynamic Duplicate Rule:
-                # Rule A: Image >= 85%
-                # Rule B: Description >= 80%
-                # Rule C: Image >= 70% AND Description >= 60%
-                is_duplicate = False
-                if max_sim_for_this_complaint >= 0.85:
-                    is_duplicate = True
-                elif desc_sim >= 0.80:
-                    is_duplicate = True
-                elif max_sim_for_this_complaint >= 0.70 and desc_sim >= 0.60:
-                    is_duplicate = True
-
-                if is_duplicate:
-                    if max_sim_for_this_complaint > highest_image_sim or desc_sim > highest_desc_sim:
-                        highest_image_sim = max(highest_image_sim, max_sim_for_this_complaint)
-                        highest_desc_sim = max(highest_desc_sim, desc_sim)
-                        best_match_id = comp_id
-                        best_match_complaint = complaint
-            except Exception as e:
-                logger.error(f"EXCEPTION during comparison with {complaint.get('_id', 'unknown')}: {e}")
+                # Prepare comparison data
+                stored_hashes = []
+                stored_hash = complaint.get("imageHash")
+                if not stored_hash and "aiInsights" in complaint:
+                    stored_hash = complaint["aiInsights"].get("imageHash")
                     
-        if best_match_id and best_match_complaint:
-            logger.info(f"Duplicate DETECTED! Matched Complaint ID: {best_match_id}")
-            
-            # Extract duplicate context
-            report_count = int(best_match_complaint.get("reportCount", 1))
-            created_at = best_match_complaint.get("createdAt")
-            age_hours = 0.0
-            if created_at:
-                # Ensure timezone aware
-                if created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=timezone.utc)
-                age_delta = datetime.now(timezone.utc) - created_at
-                age_hours = age_delta.total_seconds() / 3600.0
-            
-            # Dynamic Confidence Score (0-100) based on similarities and report count
-            # Base confidence from similarities
-            base_conf = ((highest_image_sim * 0.7) + (highest_desc_sim * 0.3)) * 100
-            # Boost based on report count (max +15)
-            boost = min(report_count * 5, 15)
-            final_conf = min(base_conf + boost, 100.0)
-            
+                if stored_hash:
+                    stored_hashes.append(stored_hash)
+                elif "images" in complaint and complaint["images"]:
+                    for img in complaint["images"]:
+                        try:
+                            img_url = img.get("url") if isinstance(img, dict) else img
+                            if isinstance(img_url, dict):
+                                img_url = img_url.get("url")
+                            if img_url and isinstance(img_url, str):
+                                if img_url.startswith("/uploads/") or img_url.startswith("uploads/"):
+                                    base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
+                                    img_url = str(base_dir / "server" / "public" / img_url.lstrip("/"))
+                                h = self.calculate_image_hash(img_url)
+                                if h:
+                                    stored_hashes.append(h)
+                        except Exception:
+                            pass
+                text_score = self.compare_description(description, complaint.get("description", ""))
+                image_score = None
+                if new_hashes and stored_hashes:
+                    image_score = max([self.compare_hashes(h1, h2) for h1 in new_hashes for h2 in stored_hashes])
+                
+                # Assume location is nearby (since it passed geospatial query)
+                location_score = 1.0
+                
+                # WEIGHTED CONFIDENCE CALCULATION
+                if image_score is not None:
+                    # CASE: Images exist
+                    confidence = (text_score * 0.4) + (image_score * 0.4) + (location_score * 0.2)
+                else:
+                    # CASE: No images (or failed to hash)
+                    confidence = (text_score * 0.7) + (location_score * 0.3)
+                    
+                print(f"\n[DUPLICATE DEBUG]")
+                print(f"candidateId: {comp_id}")
+                print(f"candidateTitle: {complaint.get('title', 'Unknown')}")
+                print(f"distanceMeters: < 500m (GeoJSON match)")
+                print(f"locationScore: {location_score:.2f}")
+                print(f"textScore: {text_score:.2f}")
+                print(f"imageScore: {image_score if image_score is not None else 'None'}")
+                print(f"finalConfidence: {confidence:.2f}")
+                
+                if confidence > best_confidence:
+                    best_confidence = confidence
+                    best_match_id = comp_id
+                    best_scores = {
+                        "textScore": text_score,
+                        "imageScore": image_score,
+                        "locationScore": location_score
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error evaluating candidate complaint {complaint.get('_id')}: {e}")
+                
+        # Set Final Response
+        response["confidence"] = round(best_confidence, 2)
+        response["textScore"] = round(best_scores.get("textScore", 0.0), 2)
+        response["locationScore"] = round(best_scores.get("locationScore", 0.0), 2)
+        response["imageScore"] = round(best_scores.get("imageScore", 0.0), 2) if best_scores.get("imageScore") is not None else None
+        
+        if best_confidence >= 0.80:
             response["duplicateDetected"] = True
+            response["duplicateLevel"] = "HIGH"
             response["matchedComplaintId"] = best_match_id
-            response["similarity"] = round(highest_image_sim, 4)
-            response["reportCount"] = report_count
-            response["complaintAgeHours"] = round(age_hours, 2)
-            response["confidenceScore"] = round(final_conf, 2)
-        else:
-            logger.info(f"No duplicate detected.")
-            # Default confidence for non-duplicates based strictly on the current image and desc? 
+            response["similarity"] = round(best_confidence, 2)
+        elif best_confidence >= 0.60:
+            response["duplicateDetected"] = True
+            response["duplicateLevel"] = "POSSIBLE"
+            response["matchedComplaintId"] = best_match_id
+            response["similarity"] = round(best_confidence, 2)
+            
+        print(f"[DUPLICATE DEBUG] duplicateLevel: {response['duplicateLevel']}\n")
+        
         # Write debug data to disk
         try:
             import json
             debug_comparisons = []
-            if 'best_match_id' not in locals(): best_match_id = None
             with open(f"C:/Users/chinn/Downloads/Civic Intelligence Platform/debug_dup_{current_complaint_id}.json", "w") as f:
                 json.dump({
                     "new_complaint_id": current_complaint_id,
