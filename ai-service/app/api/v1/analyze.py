@@ -158,6 +158,16 @@ async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
     response["duplicateDetected"] = duplicate_result.get("duplicateDetected", False)
     response["matchedComplaintId"] = duplicate_result.get("matchedComplaintId", None)
     response["similarity"] = duplicate_result.get("similarity", 0)
+    
+    if "duplicateLevel" in duplicate_result:
+        response["duplicateLevel"] = duplicate_result["duplicateLevel"]
+    if "locationScore" in duplicate_result:
+        response["locationScore"] = duplicate_result["locationScore"]
+    if "textScore" in duplicate_result:
+        response["textScore"] = duplicate_result["textScore"]
+    if "imageScore" in duplicate_result:
+        response["imageScore"] = duplicate_result["imageScore"]
+        
     response["summary"] = summary_result
         
     logger.info(f"Final AI API Response: {response}")

@@ -71,8 +71,13 @@ export default function ReportComplaint() {
           formData.append('longitude', data.location[0].toString());
           images.forEach(img => formData.append('images', img));
           
-          const result = await ComplaintService.analyzePreSubmission(formData);
-          setAiAnalysis(result);
+          const analysisResult = await ComplaintService.analyzePreSubmission(formData);
+          
+          console.log("[DUPLICATE RAW API RESPONSE]", analysisResult);
+          console.log("[DUPLICATE AI ANALYSIS STATE BEFORE SET]", aiAnalysis);
+          console.log("[DUPLICATE ANALYSIS RECEIVED]", analysisResult);
+          
+          setAiAnalysis(analysisResult);
         } catch (error) {
           console.error("AI Analysis failed:", error);
           setAiAnalysis({ processingStatus: 'FAILED', message: 'AI Analysis temporarily unavailable.' });
@@ -265,7 +270,7 @@ export default function ReportComplaint() {
                         </div>
                       ) : (
                         <>
-                          {aiAnalysis?.duplicateDetected && aiAnalysis.duplicateLevel === 'HIGH' && (
+                          {aiAnalysis?.duplicateDetected === true && String(aiAnalysis?.duplicateLevel).toUpperCase() === 'HIGH' && (
                             <div className="bg-red-50 border-2 border-red-500 rounded-xl overflow-hidden shadow-sm relative mb-6">
                               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-amber-500 to-red-500 bg-[length:200%_100%] animate-[gradient_2s_linear_infinite]" />
                               <div className="p-5 flex items-start gap-4">
@@ -299,7 +304,7 @@ export default function ReportComplaint() {
                             </div>
                           )}
 
-                          {aiAnalysis?.duplicateDetected && aiAnalysis.duplicateLevel === 'POSSIBLE' && (
+                          {aiAnalysis?.duplicateDetected === true && String(aiAnalysis?.duplicateLevel).toUpperCase() === 'POSSIBLE' && (
                             <div className="bg-amber-50 border border-amber-300 rounded-xl overflow-hidden shadow-sm relative mb-6 p-4 flex items-start gap-3">
                                 <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
                                 <div>

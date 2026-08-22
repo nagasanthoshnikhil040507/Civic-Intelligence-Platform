@@ -51,6 +51,14 @@ export class ComplaintController {
       
       const verification = await model.findById(complaint.id);
       console.log(`readAfterWrite: ${verification ? 'FOUND' : 'NOT FOUND'}\n`);
+      
+      if (verification && verification.aiAnalysis) {
+        console.log('\n[DUPLICATE PERSISTENCE CHECK]');
+        console.log(`complaintId: ${verification.id}`);
+        console.log(`duplicateDetected: ${verification.aiAnalysis.duplicateDetected}`);
+        console.log(`duplicateLevel: ${verification.aiAnalysis.duplicateLevel}`);
+        console.log(`similarity: ${verification.aiAnalysis.similarity || verification.aiAnalysis.confidence}\n`);
+      }
 
       if (validatedData.aiAnalysis) {
         const { aiAnalysis } = validatedData;
@@ -174,8 +182,20 @@ export class ComplaintController {
 
       let complaint = await complaintService.getById(req.params.id);
       
-      if (complaint.aiAnalysis?.duplicateDetected && complaint.aiAnalysis?.duplicateLevel === 'HIGH') {
-        throw new ApiError(409, 'Assignment unavailable because this complaint is a confirmed duplicate of an existing reported issue.');
+      const isHighDuplicate = complaint.aiAnalysis?.duplicateDetected && complaint.aiAnalysis?.duplicateLevel === 'HIGH';
+      
+      console.log('\n[DUPLICATE ASSIGNMENT CHECK]');
+      console.log(`complaintId: ${req.params.id}`);
+      console.log(`duplicateDetected: ${complaint.aiAnalysis?.duplicateDetected}`);
+      console.log(`duplicateLevel: ${complaint.aiAnalysis?.duplicateLevel}`);
+      console.log(`assignmentBlocked: ${isHighDuplicate}\n`);
+      
+      if (isHighDuplicate) {
+        return res.status(409).json({
+          success: false,
+          message: 'This complaint is a high-confidence duplicate and cannot be assigned independently.',
+          code: 'HIGH_DUPLICATE_COMPLAINT'
+        });
       }
 
       if (validatedData.departmentId) {

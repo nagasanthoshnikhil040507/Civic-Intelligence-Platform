@@ -57,6 +57,10 @@ export interface IComplaint extends Document {
     message?: string;
     totalInferenceTimeMs?: number;
     summary?: string;
+    duplicateLevel?: 'HIGH' | 'POSSIBLE' | 'NONE';
+    locationScore?: number;
+    textScore?: number;
+    imageScore?: number;
   };
   tags: string[];
   attachments: string[];
