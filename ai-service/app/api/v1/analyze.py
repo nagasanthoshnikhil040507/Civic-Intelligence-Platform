@@ -37,7 +37,8 @@ async def analyze_complaint(request: AnalyzeRequest, raw_request: Request):
     
     complaint_id_ctx_var.set(request.complaintId)
     logger.info(f"--- ENTER STAGE: Analyze Endpoint (Phase 3) ---")
-    logger.info(f"Input request.imageUrls: {request.imageUrls}")
+    logger.info(f"[PRE-DUPLICATE DEBUG] request.imageUrls: {request.imageUrls}")
+    logger.info(f"[PRE-DUPLICATE DEBUG] imageUrls count: {len(request.imageUrls) if request.imageUrls else 0}")
     
     latitude, longitude, description = None, None, ""
     try:

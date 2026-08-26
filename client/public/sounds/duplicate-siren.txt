@@ -1,0 +1,2 @@
+Please place a short emergency siren audio file here named 'duplicate-siren.mp3'.
+Because I do not have binary write or PowerShell access in this environment, I cannot generate the actual .mp3 file for you.

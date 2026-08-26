@@ -4,9 +4,12 @@ import { ComplaintService, ComplaintResponse } from '@/services/complaint.servic
 import { useAuthStore } from '@/store/authStore';
 import { 
   Loader2, AlertCircle, ArrowLeft, Calendar, User, FileText, 
-  MapPin, Camera, Clock, Sparkles, Building2, Pencil, Trash2, Activity
+  MapPin, Camera, Clock, Sparkles, Building2, Pencil, Trash2, Activity,
+  CheckCircle2, Network
 } from 'lucide-react';
 import LocationPicker from '@/components/map/LocationPicker';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
 export default function ComplaintDetails() {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +40,7 @@ export default function ComplaintDetails() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
         <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-        <p className="text-slate-500 font-medium">Loading complaint details...</p>
+        <p className="text-slate-500 font-medium">Loading case details...</p>
       </div>
     );
   }
@@ -45,261 +48,253 @@ export default function ComplaintDetails() {
   if (error || !complaint) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
-        <div className="p-4 bg-red-50 text-red-600 rounded-full">
-          <AlertCircle className="w-8 h-8" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-900">Complaint Not Found</h2>
-        <p className="text-slate-500 text-center max-w-md">
-          {error || "The complaint you're looking for doesn't exist or you don't have permission to view it."}
-        </p>
-        <Link to="/dashboard/complaints" className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
-          Back to Complaints
-        </Link>
+        <GlassCard variant="alert" className="p-8 flex flex-col items-center max-w-md text-center">
+          <AlertCircle className="w-12 h-12 text-red-600 mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Complaint Not Found</h2>
+          <p className="text-slate-500 dark:text-slate-400">
+            {error || "The complaint you're looking for doesn't exist or you don't have permission to view it."}
+          </p>
+          <button 
+            onClick={() => navigate(-1)}
+            className="mt-6 px-6 py-2.5 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors"
+          >
+            Go Back
+          </button>
+        </GlassCard>
       </div>
     );
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'assigned': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'resolved':
-      case 'closed': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
-    }
-  };
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      
       {/* Header Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button 
           onClick={() => navigate('/dashboard/complaints')}
-          className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors w-fit"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to list
+          Back to complaints
         </button>
         <div className="flex items-center gap-3">
-          <button disabled className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg opacity-50 cursor-not-allowed flex items-center gap-2" title="Implemented in future phases">
+          <button disabled className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 rounded-xl opacity-50 cursor-not-allowed flex items-center gap-2" title="Implemented in future phases">
             <Pencil className="w-4 h-4" />
-            Edit
-          </button>
-          <button disabled className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg opacity-50 cursor-not-allowed flex items-center gap-2" title="Implemented in future phases">
-            <Trash2 className="w-4 h-4" />
-            Delete
+            Edit Case
           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Column (Primary Info) */}
+        {/* Left Column (Primary Info & Map) */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="p-8 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-6">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border ${getStatusBadge(complaint.status)}`}>
-                  {complaint.status.replace('_', ' ')}
+          
+          <GlassCard className="p-8 relative overflow-hidden">
+            {/* Background Accent */}
+            <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+              <FileText className="w-48 h-48" />
+            </div>
+
+            <div className="relative z-10">
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <StatusBadge type="status" value={complaint.status} animate={complaint.status === 'pending' || complaint.status === 'in_progress'} />
+                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 px-3 py-1 rounded-md border border-slate-200 dark:border-slate-700">
+                  CASE-ID: {complaint._id.slice(-8).toUpperCase()}
                 </span>
-                <span className="text-sm font-medium text-slate-500">ID: {complaint._id.slice(-8).toUpperCase()}</span>
               </div>
-              <h1 className="text-2xl font-bold text-slate-900 leading-tight">{complaint.title}</h1>
-            </div>
+              <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white leading-tight mb-6">
+                {complaint.title}
+              </h1>
 
-            <div className="prose prose-slate max-w-none">
-              <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
-                {complaint.description}
-              </p>
-            </div>
+              <div className="prose prose-slate dark:prose-invert max-w-none mb-8">
+                <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed text-lg">
+                  {complaint.description}
+                </p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-100">
-              <div className="flex items-center gap-3 text-sm text-slate-600">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-slate-500" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                    <User className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Reported By</p>
+                    <p className="font-medium text-slate-900 dark:text-white">{user?.firstName} {user?.lastName}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-400">Reported By</p>
-                  <p className="font-medium text-slate-900">{user?.firstName} {user?.lastName}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-slate-600">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4 text-slate-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Created At</p>
-                  <p className="font-medium text-slate-900">{new Date(complaint.createdAt).toLocaleString()}</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                    <Calendar className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Created At</p>
+                    <p className="font-medium text-slate-900 dark:text-white">{new Date(complaint.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </GlassCard>
+
+          {/* Evidence Section */}
+          <GlassCard className="p-8">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+              <Camera className="w-5 h-5 text-indigo-500" />
+              Evidence & Media
+            </h2>
+            
+            {complaint.images && complaint.images.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {complaint.images.map((img, index) => (
+                  <div key={img.publicId} className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square cursor-pointer shadow-sm">
+                    <img 
+                      src={img.url} 
+                      alt={`Evidence ${index + 1}`} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onClick={() => window.open(img.url, '_blank')}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 text-white font-semibold tracking-wider text-sm bg-black/50 px-3 py-1.5 rounded-lg backdrop-blur-sm transition-opacity">View</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-40 w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 border-dashed rounded-xl flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                <Camera className="w-10 h-10 mb-3 opacity-30" />
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">No images attached</p>
+                <p className="text-xs mt-1">This complaint was submitted without photographic evidence.</p>
+              </div>
+            )}
+          </GlassCard>
 
           {/* Map Section */}
-          <div className="p-8 bg-white border border-slate-200 rounded-2xl shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <GlassCard className="p-8">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
               <MapPin className="w-5 h-5 text-indigo-500" />
-              Location
+              Geographic Location
             </h2>
-            <div className="rounded-xl overflow-hidden border border-slate-200">
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
               <LocationPicker 
                 value={complaint.location?.coordinates as [number, number]} 
                 onChange={() => {}} 
                 readOnly={true} 
               />
             </div>
-          </div>
-
-          {/* Evidence Section */}
-          <div className="p-8 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-6">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Camera className="w-5 h-5 text-indigo-500" />
-              Evidence & Media
-            </h2>
-            
-            {complaint.images && complaint.images.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {complaint.images.map((img, index) => (
-                  <div key={img.publicId} className="group relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-square cursor-pointer">
-                    <img 
-                      src={img.url} 
-                      alt={`Evidence ${index + 1}`} 
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onClick={() => window.open(img.url, '_blank')}
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-32 w-full bg-slate-50 border border-slate-200 border-dashed rounded-xl flex flex-col items-center justify-center text-slate-400">
-                <Camera className="w-8 h-8 mb-2 opacity-50" />
-                <p className="text-sm font-medium">No images attached</p>
-                <p className="text-xs mt-1">This complaint was submitted without photographic evidence.</p>
-              </div>
-            )}
-          </div>
+          </GlassCard>
         </div>
 
         {/* Right Column (Metadata & Timeline) */}
         <div className="space-y-6">
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
-            <h3 className="font-bold text-slate-900 pb-2 border-b border-slate-100">Metadata</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Category</p>
-                <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <FileText className="w-4 h-4 text-slate-400" />
-                  <span className="capitalize">{complaint.category.replace('_', ' ')}</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Priority</p>
-                <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <AlertCircle className={`w-4 h-4 ${String(complaint.priority) === 'high' || String(complaint.priority) === 'critical' ? 'text-red-500' : 'text-slate-400'}`} />
-                  <span className="capitalize">{complaint.priority || 'Medium'}</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Department</p>
-                <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <Building2 className="w-4 h-4 text-slate-400" />
-                  <span>{complaint.department ? complaint.department.name : 'Unassigned'}</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Last Updated</p>
-                <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                  <Clock className="w-4 h-4 text-slate-400" />
-                  <span>{complaint.updatedAt ? new Date(complaint.updatedAt).toLocaleString() : new Date(complaint.createdAt).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Analysis */}
+          
+          {/* AI Intelligence Card */}
           {complaint.aiAnalysis && complaint.aiAnalysis.processingStatus !== 'FAILED' ? (
-            <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl shadow-sm">
-              <h3 className="font-bold text-indigo-900 mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-indigo-500" />
-                AI Intelligence
-              </h3>
-              
-              <div className="space-y-4">
-                {complaint.aiAnalysis.summary && (
-                  <div>
-                    <span className="block text-xs font-medium text-indigo-500 mb-1 flex items-center gap-1">
-                      <FileText className="w-3 h-3"/> AI Summary
-                    </span>
-                    <p className="text-sm text-indigo-900 font-medium italic">"{complaint.aiAnalysis.summary}"</p>
-                  </div>
-                )}
+            <GlassCard variant="primary" className="p-6 relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 opacity-10 rotate-12 pointer-events-none">
+                <Sparkles className="w-32 h-32 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="relative z-10">
+                <h3 className="font-bold text-indigo-900 dark:text-indigo-200 mb-5 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  AI Intelligence
+                </h3>
                 
-                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-indigo-100/50">
-                  <div>
-                    <span className="block text-xs font-medium text-indigo-500">Category Suggestion</span>
-                    <span className="text-sm font-semibold text-indigo-900">{complaint.aiAnalysis.garbageDetected ? 'Garbage' : complaint.category}</span>
-                  </div>
-                  {complaint.aiAnalysis.priority !== undefined && (
-                    <div>
-                      <span className="block text-xs font-medium text-indigo-500 flex items-center gap-1">
-                        <Activity className="w-3 h-3"/> Score
+                <div className="space-y-5">
+                  {complaint.aiAnalysis.summary && (
+                    <div className="bg-white/60 dark:bg-slate-900/40 p-4 rounded-xl border border-indigo-200/50 dark:border-indigo-800/50">
+                      <span className="block text-[10px] font-bold tracking-widest uppercase text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1">
+                        <FileText className="w-3 h-3"/> AI Summary
                       </span>
-                      <span className="text-sm font-semibold text-indigo-900">{Math.round(Number(complaint.aiAnalysis.priority))}/100</span>
+                      <p className="text-sm text-slate-800 dark:text-slate-300 font-medium italic leading-relaxed">"{complaint.aiAnalysis.summary}"</p>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/60 dark:bg-slate-900/40 p-3 rounded-xl border border-indigo-200/50 dark:border-indigo-800/50">
+                      <span className="block text-[10px] font-bold tracking-widest uppercase text-indigo-600 dark:text-indigo-400 mb-1">Classification</span>
+                      <span className="text-sm font-bold text-slate-900 dark:text-white capitalize">{complaint.aiAnalysis.garbageDetected ? 'Garbage' : complaint.category}</span>
+                    </div>
+                    {complaint.aiAnalysis.priority !== undefined && (
+                      <div className="bg-white/60 dark:bg-slate-900/40 p-3 rounded-xl border border-indigo-200/50 dark:border-indigo-800/50">
+                        <span className="block text-[10px] font-bold tracking-widest uppercase text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
+                          <Activity className="w-3 h-3"/> Score
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">{Math.round(Number(complaint.aiAnalysis.priority))}/100</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {complaint.aiAnalysis.duplicateDetected && (
+                    <div className="p-4 bg-red-100/80 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-xl flex items-start gap-3 backdrop-blur-sm">
+                      <Network className="w-5 h-5 text-red-600 dark:text-red-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="block text-xs font-bold text-red-900 dark:text-red-200 uppercase tracking-wider mb-0.5">Duplicate Candidate</span>
+                        <span className="text-xs text-red-800 dark:text-red-300 font-medium leading-relaxed block">This issue shares strong geospatial and semantic similarities with an existing open complaint.</span>
+                      </div>
                     </div>
                   )}
                 </div>
-                
-                {complaint.aiAnalysis.duplicateDetected && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                    <div>
-                      <span className="block text-xs font-bold text-red-900 uppercase">Duplicate Flagged</span>
-                      <span className="text-xs text-red-700">This complaint shares strong similarities with a nearby issue.</span>
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
+            </GlassCard>
           ) : (
-            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm">
-              <h3 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+            <GlassCard className="p-6 border-dashed">
+              <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-slate-400" />
-                AI Analysis
+                AI Analysis Pending
               </h3>
-              <p className="text-sm text-slate-500">
-                AI Intelligence was not available at the time of submission or is pending.
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                AI Intelligence was not available at the time of submission or is currently processing.
               </p>
-            </div>
+            </GlassCard>
           )}
 
+          {/* Metadata Section */}
+          <GlassCard className="p-6">
+            <h3 className="font-bold text-slate-900 dark:text-white pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">Case Routing</h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-1.5">Assigned Category</p>
+                <div className="flex items-center gap-3">
+                  <StatusBadge type="severity" value="MEDIUM" />
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 capitalize">{complaint.category.replace('_', ' ')}</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-1.5">Priority Level</p>
+                <StatusBadge type="priority" value={String(complaint.priority || '50')} />
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-1.5">Department</p>
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <Building2 className="w-4 h-4 text-indigo-500" />
+                  <span>{complaint.department ? complaint.department.name : 'Unassigned Route'}</span>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
           {/* Timeline Section */}
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <GlassCard className="p-6">
+            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
               <Clock className="w-5 h-5 text-slate-400" />
-              Timeline
+              Resolution Timeline
             </h3>
             
             {(() => {
-              // Define the standard progression of statuses
               const statusProgression = ['pending', 'assigned', 'in_progress', 'resolved', 'closed'];
               
-              // Normalize status names for display
               const getStatusDisplay = (s: string) => {
                 switch (s) {
-                  case 'pending': return 'Complaint Submitted';
-                  case 'assigned': return 'Under Review';
-                  case 'in_progress': return 'In Progress';
-                  case 'resolved': return 'Resolved';
-                  case 'closed': return 'Closed';
-                  case 'rejected': return 'Rejected';
+                  case 'pending': return 'Complaint Received';
+                  case 'assigned': return 'Assigned to Dept';
+                  case 'in_progress': return 'Work In Progress';
+                  case 'resolved': return 'Issue Resolved';
+                  case 'closed': return 'Case Closed';
+                  case 'rejected': return 'Case Rejected';
                   default: return s.replace('_', ' ');
                 }
               };
 
-              // Map timeline events from DB, or generate a fallback from createdAt/updatedAt
               let events = [...(complaint.timeline || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
               
               if (events.length === 0) {
@@ -309,13 +304,12 @@ export default function ComplaintDetails() {
                 }
               }
 
-              // Build the full visual timeline
               const currentStatusIndex = complaint.status === 'rejected' ? -1 : statusProgression.indexOf(complaint.status);
               
               const timelineNodes = complaint.status === 'rejected' 
                 ? [
-                    { status: 'pending', display: 'Complaint Submitted', done: true, current: false, note: null, time: events.find(e => e.status === 'pending')?.timestamp || complaint.createdAt },
-                    { status: 'rejected', display: 'Rejected', done: true, current: true, note: null, time: events.find(e => e.status === 'rejected')?.timestamp || complaint.updatedAt }
+                    { status: 'pending', display: 'Complaint Received', done: true, current: false, note: null, time: events.find(e => e.status === 'pending')?.timestamp || complaint.createdAt },
+                    { status: 'rejected', display: 'Case Rejected', done: true, current: true, note: null, time: events.find(e => e.status === 'rejected')?.timestamp || complaint.updatedAt }
                   ]
                 : statusProgression.map((status, index) => {
                     const event = events.find(e => e.status === status) || events.reverse().find(e => statusProgression.indexOf(e.status) >= index);
@@ -333,36 +327,38 @@ export default function ComplaintDetails() {
                   });
 
               return (
-                <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-indigo-500 before:via-slate-200 before:to-transparent">
+                <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-[11px] before:h-full before:w-[2px] before:bg-gradient-to-b before:from-indigo-500 before:via-slate-200 dark:before:via-slate-700 before:to-transparent">
                   {timelineNodes.map((node, i) => (
-                    <div key={i} className={`relative ${!node.done ? 'opacity-50' : ''}`}>
-                      <div className={`absolute -left-8 w-4 h-4 rounded-full border-2 flex items-center justify-center bg-white ${
-                        node.current ? 'border-indigo-600 shadow-[0_0_0_4px_rgba(79,70,229,0.1)]' : 
-                        node.done ? 'border-indigo-500 bg-indigo-50' : 
-                        'border-slate-300'
+                    <div key={i} className={`relative ${!node.done ? 'opacity-40' : ''}`}>
+                      <div className={`absolute -left-10 w-6 h-6 rounded-full border-4 flex items-center justify-center bg-white dark:bg-slate-900 transition-all ${
+                        node.current ? 'border-indigo-600 dark:border-indigo-500 shadow-[0_0_0_4px_rgba(79,70,229,0.1)] scale-110' : 
+                        node.done ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : 
+                        'border-slate-200 dark:border-slate-700'
                       }`}>
-                        {node.done && !node.current && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
-                        {node.current && <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />}
+                        {node.done && !node.current && <CheckCircle2 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />}
+                        {node.current && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-500 animate-pulse" />}
                       </div>
-                      <p className={`text-sm font-medium ${node.current ? 'text-indigo-700' : 'text-slate-900'}`}>
-                        {node.display}
-                      </p>
-                      {node.time ? (
-                        <p className="text-xs text-slate-500 mt-0.5">{new Date(node.time).toLocaleString()}</p>
-                      ) : (
-                        <p className="text-xs text-slate-400 mt-0.5">Pending</p>
-                      )}
-                      {node.note && (
-                        <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
-                          {node.note}
-                        </div>
-                      )}
+                      <div className="pl-2">
+                        <p className={`text-sm font-bold ${node.current ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-900 dark:text-slate-300'}`}>
+                          {node.display}
+                        </p>
+                        {node.time ? (
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{new Date(node.time).toLocaleString()}</p>
+                        ) : (
+                          <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-wider">Pending Phase</p>
+                        )}
+                        {node.note && (
+                          <div className="mt-3 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed font-medium">
+                            "{node.note}"
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               );
             })()}
-          </div>
+          </GlassCard>
         </div>
       </div>
     </div>

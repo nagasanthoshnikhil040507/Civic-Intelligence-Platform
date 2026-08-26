@@ -419,6 +419,10 @@ export class ComplaintController {
   static async analyzePreSubmission(req: Request, res: Response, next: NextFunction) {
     let tempImagePaths: string[] = [];
     try {
+      console.log('\n[PRE-DUPLICATE DEBUG] incoming request content-type:', req.headers['content-type']);
+      console.log('[PRE-DUPLICATE DEBUG] req.body:', req.body);
+      console.log('[PRE-DUPLICATE DEBUG] req.files:', req.files);
+      
       const { title, description, category, latitude, longitude } = req.body;
       
       if (!latitude || !longitude) {
@@ -426,15 +430,26 @@ export class ComplaintController {
       }
 
       // 1. Process temporary files via multer
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      
       if (req.files && Array.isArray(req.files)) {
         req.files.forEach(file => {
-          if (file && file.path) {
-            tempImagePaths.push(file.path);
+          if (file && file.buffer) {
+            const tempPath = path.join(os.tmpdir(), `civic_temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`);
+            fs.writeFileSync(tempPath, file.buffer);
+            tempImagePaths.push(tempPath);
+          } else if (file && (file as any).path) {
+            tempImagePaths.push((file as any).path);
           }
         });
       }
       
       tempImagePaths = tempImagePaths.filter(url => url !== null && url !== undefined && url !== "null");
+      
+      console.log('[PRE-DUPLICATE DEBUG] number of images received:', req.files ? (Array.isArray(req.files) ? req.files.length : 'not array') : 0);
+      console.log('[PRE-DUPLICATE DEBUG] image URLs/paths generated:', tempImagePaths);
       
       // 2. Prepare payload for FastAPI AI Service
       const aiPayload = {
@@ -453,6 +468,8 @@ export class ComplaintController {
       
       const aiUrl = config.aiServiceUrl || 'http://127.0.0.1:8000';
       const fastApiUrl = aiUrl.replace('localhost', '127.0.0.1');
+      
+      console.log('[PRE-DUPLICATE DEBUG] payload sent to FastAPI:', aiPayload);
       
       const response = await axios.post(`${fastApiUrl}/api/v1/analyze`, aiPayload, { timeout: 30000 });
       const prediction = response.data;
