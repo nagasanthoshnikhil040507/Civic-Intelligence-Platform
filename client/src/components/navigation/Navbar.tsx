@@ -6,7 +6,7 @@ import { cn } from '../ui/GlassCard';
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
+  
 
   useEffect(() => {
     const handleScroll = () => {

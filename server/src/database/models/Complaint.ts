@@ -47,8 +47,8 @@ export interface IComplaint extends Document {
   aiAnalysis?: {
     garbageDetected?: boolean;
     confidence?: number;
-    severity?: string;
-    priority?: string;
+    severity?: number;
+    priority?: number;
     quantityEstimation?: string;
     duplicateDetected?: boolean;
     matchedComplaintId?: Types.ObjectId;
@@ -127,8 +127,8 @@ const complaintSchema = new Schema<IComplaint>(
     aiAnalysis: {
       garbageDetected: { type: Boolean },
       confidence: { type: Number },
-      severity: { type: String },
-      priority: { type: String },
+      severity: { type: Schema.Types.Mixed },
+      priority: { type: Schema.Types.Mixed },
       quantityEstimation: { type: String },
       duplicateDetected: { type: Boolean },
       matchedComplaintId: { type: Schema.Types.ObjectId, ref: 'Complaint' },

@@ -3,7 +3,6 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaf
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 import { Loader2, MapPin } from 'lucide-react';
-import { StatusBadge } from '../ui/StatusBadge';
 
 // Fix for default marker icon in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;

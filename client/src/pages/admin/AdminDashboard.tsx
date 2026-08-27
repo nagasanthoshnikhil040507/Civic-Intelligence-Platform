@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Users, FileText, CheckCircle, Clock, AlertTriangle, XCircle, Loader2, Server, Map as MapIcon, ShieldCheck, Activity } from 'lucide-react';
-import { api } from '@/services/api';
 import { AdminService } from '@/services/admin.service';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StatCard } from '@/components/ui/StatCard';

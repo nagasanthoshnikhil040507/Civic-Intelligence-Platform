@@ -30,7 +30,7 @@ export default function AdminUserDetails() {
     setError('');
     try {
       const response = await AdminService.getUserDetails(userId);
-      setUserData(response.data);
+      setUserData(response);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load user details');
     } finally {

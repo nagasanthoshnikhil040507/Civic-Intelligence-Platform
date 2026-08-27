@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ComplaintService, ComplaintResponse } from '@/services/complaint.service';
 import { useAuthStore } from '@/store/authStore';
 import { 
   Loader2, AlertCircle, ArrowLeft, Calendar, User, FileText, 
-  MapPin, Camera, Clock, Sparkles, Building2, Pencil, Trash2, Activity,
+  MapPin, Camera, Clock, Sparkles, Building2, Pencil, Activity,
   CheckCircle2, Network
 } from 'lucide-react';
 import LocationPicker from '@/components/map/LocationPicker';

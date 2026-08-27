@@ -31,8 +31,8 @@ export default function AdminComplaintDetails() {
         AdminService.getComplaintDetails(complaintId),
         AdminService.getUsers({ role: 'officer', status: 'active', limit: 100 })
       ]);
-      setComplaint(compRes.data);
-      setOfficers(offRes.data.users);
+      setComplaint(compRes);
+      setOfficers(offRes.users);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load data');
     } finally {

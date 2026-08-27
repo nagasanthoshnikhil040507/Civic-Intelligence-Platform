@@ -44,8 +44,8 @@ export interface ComplaintResponse {
     garbageDetected?: boolean;
     quantityEstimation?: string;
     confidence?: number;
-    severity?: string;
-    priority?: string;
+    severity?: number;
+    priority?: number;
     duplicateDetected?: boolean;
     matchedComplaintId?: string;
     processingStatus?: string;
@@ -75,7 +75,7 @@ export class ComplaintService {
   static async analyzePreSubmission(payload: FormData): Promise<any> {
     const response = await api.post('/complaints/analyze-pre-submission', payload, {
       headers: {
-        'Content-Type': undefined
+        'Content-Type': 'multipart/form-data'
       }
     });
     return response.data.data;
@@ -111,7 +111,7 @@ export class ComplaintService {
 
     const response = await api.post(`/complaints/${id}/images`, formData, {
       headers: {
-        'Content-Type': undefined
+        'Content-Type': 'multipart/form-data'
       }
     });
     return response.data.data;
@@ -155,7 +155,7 @@ export class ComplaintService {
 
     const response = await api.post(`/complaints/${id}/resolve`, formData, {
       headers: {
-        'Content-Type': undefined
+        'Content-Type': 'multipart/form-data'
       }
     });
     return response.data.data;

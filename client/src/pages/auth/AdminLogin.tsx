@@ -45,7 +45,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-md mx-auto mt-24">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col items-center space-y-3 text-center">
         <div className="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-full">
           <Settings className="w-10 h-10 text-purple-700 dark:text-purple-400" />
@@ -54,7 +54,7 @@ export default function AdminLogin() {
         <p className="text-slate-500 dark:text-slate-400">Secure system administration access</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {serverError && (
           <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
             <span className="font-semibold">Error:</span> {serverError}
@@ -99,10 +99,8 @@ export default function AdminLogin() {
       </form>
       
       <div className="text-center text-sm text-slate-500">
-        Need an administrator account?{' '}
-        <Link to="/admin/register" className="font-medium text-slate-900 hover:text-slate-800 transition-colors">
-          Create Admin Account
-        </Link>
+        Administrator accounts are provisioned internally. <br/>
+        <span className="text-slate-600 font-medium">Please contact system management for access.</span>
       </div>
 
       <div className="pt-4 flex justify-center border-t border-slate-200">

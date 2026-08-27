@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Check, Camera, MapPin, Loader2, Image as ImageIcon, AlertTriangle, Sparkles, Activity, FileText } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Camera, MapPin, Loader2, Image as ImageIcon, AlertTriangle, Sparkles, Activity, FileText, AlertCircle } from 'lucide-react';
 
 import { ComplaintService } from '@/services/complaint.service';
 import LocationPicker from '@/components/map/LocationPicker';

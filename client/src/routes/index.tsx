@@ -58,23 +58,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: withSuspense(Login) },
       { path: '/register', element: withSuspense(Register) },
+      { path: '/officer/login', element: withSuspense(OfficerLogin) },
+      { path: '/admin/login', element: withSuspense(AdminLogin) },
     ],
-  },
-  {
-    path: '/officer/login',
-    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(OfficerLogin)}</div>,
-  },
-  {
-    path: '/officer/register',
-    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(OfficerRegister)}</div>,
-  },
-  {
-    path: '/admin/login',
-    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(AdminLogin)}</div>,
-  },
-  {
-    path: '/admin/register',
-    element: <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">{withSuspense(AdminRegister)}</div>,
   },
   { path: '/unauthorized', element: withSuspense(Unauthorized) },
   {

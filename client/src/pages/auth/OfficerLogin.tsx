@@ -38,7 +38,7 @@ export default function OfficerLogin() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-md mx-auto">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col items-center space-y-3 text-center">
         <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-full">
           <ShieldCheck className="w-10 h-10 text-blue-700 dark:text-blue-400" />
@@ -47,7 +47,7 @@ export default function OfficerLogin() {
         <p className="text-slate-500 dark:text-slate-400">Secure access for authorized personnel</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {serverError && (
           <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
             <span className="font-semibold">Error:</span> {serverError}
@@ -92,10 +92,8 @@ export default function OfficerLogin() {
       </form>
 
       <div className="text-center text-sm text-slate-500">
-        Don't have an officer account?{' '}
-        <Link to="/officer/register" className="font-medium text-slate-900 hover:text-slate-800 transition-colors">
-          Create Officer Account
-        </Link>
+        Officer accounts are provisioned internally. <br/>
+        <span className="text-slate-600 font-medium">Please contact your administrator for access.</span>
       </div>
 
       <div className="pt-4 flex justify-center border-t border-slate-200">

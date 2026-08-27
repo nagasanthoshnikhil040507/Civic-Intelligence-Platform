@@ -48,9 +48,9 @@ export default function AdminUsersList() {
         status: filters.status || undefined,
       });
       
-      setUsers(response.data.users);
-      setTotalPages(response.data.pagination.pages);
-      setTotal(response.data.pagination.total);
+      setUsers(response.users);
+      setTotalPages(response.pagination.pages);
+      setTotal(response.pagination.total);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch users');
     } finally {

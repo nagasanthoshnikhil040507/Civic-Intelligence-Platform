@@ -46,9 +46,9 @@ export default function AdminComplaints() {
         category: filters.category || undefined,
       });
       
-      setComplaints(response.data.complaints);
-      setTotalPages(response.data.pagination.pages);
-      setTotal(response.data.pagination.total);
+      setComplaints(response.complaints);
+      setTotalPages(response.pagination.pages);
+      setTotal(response.pagination.total);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch complaints');
     } finally {

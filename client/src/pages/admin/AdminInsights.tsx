@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AdminService } from '@/services/admin.service';
 import { 
-  Sparkles, Activity, AlertTriangle, Layers, BrainCircuit,
+  Activity, AlertTriangle, Layers, BrainCircuit,
   FileText, ArrowRight, ShieldAlert, Loader2, CheckCircle2,
   RefreshCw, Network, Lightbulb
 } from 'lucide-react';
@@ -23,7 +23,7 @@ export default function AdminInsights() {
     try {
       setIsLoading(true);
       const res = await AdminService.getAiInsights();
-      setInsights(res.data);
+      setInsights(res);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load AI insights');
     } finally {

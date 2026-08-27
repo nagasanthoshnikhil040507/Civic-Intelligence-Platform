@@ -40,9 +40,15 @@ export default function Login() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h2>
-        <p className="text-slate-500">Enter your credentials to access your account</p>
+      <div className="flex flex-col items-center space-y-3 text-center">
+        <div className="p-3 bg-indigo-100 dark:bg-indigo-900/40 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-700 dark:text-indigo-400">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Citizen Portal</h2>
+        <p className="text-slate-500 dark:text-slate-400">Enter your credentials to access your account</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

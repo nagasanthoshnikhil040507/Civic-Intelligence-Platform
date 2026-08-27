@@ -4,13 +4,15 @@ type BadgeType = 'status' | 'severity' | 'priority' | 'duplicate';
 
 interface StatusBadgeProps {
   type: BadgeType;
-  value: string;
+  value: string | number | null | undefined;
   className?: string;
   animate?: boolean;
 }
 
 export function StatusBadge({ type, value, className, animate = false }: StatusBadgeProps) {
-  const normalizedValue = value.toUpperCase().trim();
+  if (value == null) return null;
+  const stringValue = String(value);
+  const normalizedValue = stringValue.toUpperCase().trim();
   
   const getBadgeStyles = () => {
     switch (type) {
@@ -28,7 +30,7 @@ export function StatusBadge({ type, value, className, animate = false }: StatusB
         return 'bg-slate-100/80 text-slate-700 dark:bg-slate-800/80 dark:text-slate-400 ring-slate-200 dark:ring-slate-700'; // NONE
 
       case 'priority':
-        const priorityScore = parseInt(value, 10);
+        const priorityScore = typeof value === 'number' ? value : parseInt(stringValue, 10);
         if (isNaN(priorityScore)) return 'bg-slate-100 text-slate-700';
         if (priorityScore >= 75) return 'bg-red-100/80 text-red-700 dark:bg-red-950/40 dark:text-red-400 ring-red-200 dark:ring-red-900';
         if (priorityScore >= 50) return 'bg-amber-100/80 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 ring-amber-200 dark:ring-amber-900';
@@ -40,8 +42,8 @@ export function StatusBadge({ type, value, className, animate = false }: StatusB
   };
 
   const formattedValue = type === 'status' 
-    ? value.replace('_', ' ') 
-    : value;
+    ? stringValue.replace('_', ' ') 
+    : stringValue;
 
   const animationClass = (animate && (normalizedValue === 'HIGH' || normalizedValue === 'PENDING')) 
     ? 'animate-pulse' 

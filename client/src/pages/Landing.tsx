@@ -148,7 +148,7 @@ export default function Landing() {
                   <li className="flex items-center gap-3 text-slate-600 dark:text-slate-400"><CheckCircle2 className="w-5 h-5 text-blue-500" /> Monitor workload</li>
                 </ul>
               </div>
-              <Link to="/login" className="w-full inline-flex items-center justify-center px-6 py-3.5 text-base font-semibold text-slate-700 dark:text-slate-200 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-xl transition-colors">
+              <Link to="/officer/login" className="w-full inline-flex items-center justify-center px-6 py-3.5 text-base font-semibold text-slate-700 dark:text-slate-200 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-xl transition-colors">
                 Officer Login
               </Link>
             </GlassCard>
@@ -165,7 +165,7 @@ export default function Landing() {
                   <li className="flex items-center gap-3 text-slate-600 dark:text-slate-400"><CheckCircle2 className="w-5 h-5 text-emerald-500" /> Manage roles & access</li>
                 </ul>
               </div>
-              <Link to="/login" className="w-full inline-flex items-center justify-center px-6 py-3.5 text-base font-semibold text-slate-700 dark:text-slate-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 rounded-xl transition-colors">
+              <Link to="/admin/login" className="w-full inline-flex items-center justify-center px-6 py-3.5 text-base font-semibold text-slate-700 dark:text-slate-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 rounded-xl transition-colors">
                 Admin Login
               </Link>
             </GlassCard>

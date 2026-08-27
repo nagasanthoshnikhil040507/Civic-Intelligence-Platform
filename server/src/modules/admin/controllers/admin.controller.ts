@@ -223,7 +223,7 @@ export const getAiInsights = async (req: Request, res: Response) => {
       isDeleted: false,
       status: { $nin: ['resolved', 'closed', 'rejected'] },
       $or: [
-        { priority: { $in: ['high', 'critical'] } },
+        { priority: { $gte: 75 } },
         { 'aiAnalysis.priority': { $gte: 75 } } // Support for numeric AI priority
       ]
     })
