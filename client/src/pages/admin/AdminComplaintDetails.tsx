@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AdminService } from '@/services/admin.service';
 import { Loader2, ArrowLeft, MapPin, Calendar, User, Shield, Clock, FileText, Printer, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { generateOfficialReport } from '@/utils/pdfReportGenerator';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 
@@ -13,6 +14,7 @@ export default function AdminComplaintDetails() {
   const [officers, setOfficers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState('');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -56,9 +58,17 @@ export default function AdminComplaintDetails() {
     }
   };
 
-  const handlePrintPDF = () => {
-    // Hide standard elements via print CSS (in index.css) and trigger print
-    window.print();
+  const handlePrintPDF = async () => {
+    if (!complaint || complaint.status.toUpperCase() !== 'RESOLVED') return;
+    setIsGeneratingPDF(true);
+    try {
+      await generateOfficialReport(complaint);
+    } catch (err) {
+      console.error('Failed to generate PDF', err);
+      setError('Unable to generate report. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   if (isLoading) {
@@ -100,10 +110,11 @@ export default function AdminComplaintDetails() {
         {isResolved && (
           <button
             onClick={handlePrintPDF}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 transition-all hover:shadow-md hover:-translate-y-0.5"
+            disabled={isGeneratingPDF}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 transition-all hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Printer className="w-4 h-4" />
-            Download Official Record (PDF)
+            {isGeneratingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+            {isGeneratingPDF ? 'Generating Report...' : 'Download Official Report (PDF)'}
           </button>
         )}
       </div>

@@ -35,6 +35,20 @@ export class ComplaintController {
         }
       }
 
+      // Add reverse geocoding to resolve region name
+      try {
+        if (validatedData.location && validatedData.location.coordinates) {
+          const [lon, lat] = validatedData.location.coordinates;
+          if (lon !== 0 || lat !== 0) {
+            const { reverseGeocode } = require('../../../utils/geocoder');
+            const region = await reverseGeocode(lat, lon);
+            (validatedData as any).region = region;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to reverse geocode during complaint creation:', err);
+      }
+
       console.log('[COMPLAINT DEBUG] creating complaint');
       const complaint = await complaintService.createCitizenComplaint(userId, validatedData);
       console.log(`[COMPLAINT DEBUG] created _id: ${complaint.id}`);

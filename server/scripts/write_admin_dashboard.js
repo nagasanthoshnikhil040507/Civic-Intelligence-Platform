@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+const fs = require('fs');
+
+const content = `import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Users, FileText, CheckCircle, Clock, AlertTriangle, 
@@ -10,7 +12,7 @@ import { AdminService } from '@/services/admin.service';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StatCard } from '@/components/ui/StatCard';
 import Heatmap from '@/components/map/Heatmap';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 const PIE_COLORS = ['#4f46e5', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#0ea5e9', '#64748b'];
 const PERIOD_LABELS: Record<string, string> = {
@@ -29,7 +31,6 @@ export default function AdminDashboard() {
   
   // Table state
   const [complaints, setComplaints] = useState<any[]>([]);
-  const [mapComplaints, setMapComplaints] = useState<any[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -64,9 +65,7 @@ export default function AdminDashboard() {
     const fetchInsightsData = async () => {
       try {
         setInsightsLoading(true);
-        const insightsData = await AdminService.getAnalytics(period);
-        const mapData = await AdminService.getComplaints({ limit: 500, period });
-        setMapComplaints(mapData.complaints || []);
+        const insightsData = await AdminService.getAiInsights(period);
         setInsights(insightsData);
       } catch (err: any) {
         console.error('Failed to load analytics', err);
@@ -147,7 +146,7 @@ export default function AdminDashboard() {
     const diff = current - previous;
     const percent = previous === 0 ? 0 : (diff / previous) * 100;
     return {
-      value: `${Math.abs(percent).toFixed(1)}% vs prev`,
+      value: \`\${Math.abs(percent).toFixed(1)}% vs prev\`,
       isPositive: percent >= 0
     };
   };
@@ -171,11 +170,11 @@ export default function AdminDashboard() {
             <button
               key={value}
               onClick={() => { setPeriod(value); setPagination({ ...pagination, page: 1 }); }}
-              className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+              className={\`px-4 py-2 text-sm font-semibold rounded-lg transition-all \${
                 period === value 
                   ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700' 
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
+              }\`}
             >
               {label.replace('Last ', '')}
             </button>
@@ -219,7 +218,7 @@ export default function AdminDashboard() {
             />
             <StatCard
               title="Resolution Rate"
-              value={`${(overview.resolutionRate || 0).toFixed(1)}%`}
+              value={\`\${(overview.resolutionRate || 0).toFixed(1)}%\`}
               icon={<Activity className="w-4 h-4 text-purple-500" />}
             />
           </div>
@@ -242,7 +241,7 @@ export default function AdminDashboard() {
                   {/* Donut */}
                   <div className="relative w-48 h-48 rounded-full shadow-inner shrink-0"
                     style={{ 
-                      background: `conic-gradient(${
+                      background: \`conic-gradient(\${
                         (() => {
                           const total = insights.categories.reduce((s: number, i: any) => s + i.count, 0);
                           let current = 0;
@@ -251,10 +250,10 @@ export default function AdminDashboard() {
                             const start = current;
                             const end = current + p;
                             current = end;
-                            return `${PIE_COLORS[idx % PIE_COLORS.length]} ${start}% ${end}%`;
+                            return \`\${PIE_COLORS[idx % PIE_COLORS.length]} \${start}% \${end}%\`;
                           }).join(', ');
                         })()
-                      })` 
+                      })\` 
                     }}
                   >
                     <div className="absolute inset-0 m-5 bg-white dark:bg-slate-950 rounded-full flex flex-col items-center justify-center shadow-lg">
@@ -302,7 +301,7 @@ export default function AdminDashboard() {
                     const h = maxTrend > 0 ? (t.count / maxTrend) * 100 : 0;
                     return (
                       <div key={t._id} className="group relative flex-1 flex flex-col justify-end items-center h-full min-h-[160px]">
-                         <div className="w-full max-w-[32px] bg-indigo-500/80 hover:bg-indigo-400 transition-all rounded-t-sm" style={{ height: `${h}%` }}></div>
+                         <div className="w-full max-w-[32px] bg-indigo-500/80 hover:bg-indigo-400 transition-all rounded-t-sm" style={{ height: \`\${h}%\` }}></div>
                          <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-900 text-white text-xs py-1 px-2 rounded whitespace-nowrap z-10">
                            <span className="font-bold block text-center mb-0.5 border-b border-slate-700 pb-0.5">{t._id}</span>
                            {t.count} complaints
@@ -397,7 +396,7 @@ export default function AdminDashboard() {
                         complaints.map((complaint) => (
                           <tr 
                             key={complaint._id} 
-                            onClick={() => navigate(`/admin/complaints/${complaint._id}`)}
+                            onClick={() => navigate(\`/admin/complaints/\${complaint._id}\`)}
                             className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
                           >
                             <td className="px-6 py-4 font-mono font-medium text-indigo-600 dark:text-indigo-400">
@@ -412,17 +411,17 @@ export default function AdminDashboard() {
                               </span>
                             </td>
                             <td className="px-6 py-4 font-medium text-slate-600 dark:text-slate-400">
-                              {complaint.citizenId ? `${complaint.citizenId.firstName} ${complaint.citizenId.lastName}` : 'Unknown User'}
+                              {complaint.citizenId ? \`\${complaint.citizenId.firstName} \${complaint.citizenId.lastName}\` : 'Unknown User'}
                             </td>
                             <td className="px-6 py-4">
-                              <StatusBadge type="status" value={complaint.status} />
+                              <StatusBadge status={complaint.status} />
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${
+                                <div className={\`w-2 h-2 rounded-full \${
                                   complaint.priority >= 75 ? 'bg-red-500' : 
                                   complaint.priority >= 40 ? 'bg-amber-500' : 'bg-emerald-500'
-                                }`} />
+                                }\`} />
                                 <span className="font-semibold text-slate-700 dark:text-slate-300">{complaint.priority}</span>
                               </div>
                             </td>
@@ -480,7 +479,7 @@ export default function AdminDashboard() {
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Geographical distribution of all civic complaints in selected period.</p>
                   </div>
                   <span className="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase border border-indigo-100 dark:border-indigo-800">
-                    {mapComplaints.length} Points
+                    {pagination.total} Points
                   </span>
                 </div>
                 <div className="flex-1 relative bg-slate-100 dark:bg-slate-900">
@@ -488,7 +487,7 @@ export default function AdminDashboard() {
                       but for now we pass the currently visible table complaints or fetch a map-specific unpaginated list. 
                       Actually, passing 'complaints' provides the current page's pins. If the user wants ALL pins, we need a separate fetch. 
                       Assuming existing behavior was sufficient. */}
-                  <Heatmap complaints={mapComplaints} isLoading={loading || insightsLoading} />
+                  <Heatmap complaints={complaints} isLoading={loading} />
                 </div>
               </GlassCard>
             </div>
@@ -499,3 +498,7 @@ export default function AdminDashboard() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('C:/Users/chinn/Downloads/Civic Intelligence Platform/client/src/pages/admin/AdminDashboard.tsx', content);
+console.log('AdminDashboard.tsx updated successfully.');

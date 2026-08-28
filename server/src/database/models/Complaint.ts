@@ -28,6 +28,7 @@ export interface IComplaint extends Document {
     coordinates: [number, number]; // [longitude, latitude]
   };
   address?: string;
+  region?: string;
   timeline: Array<{
     status: string;
     updatedBy: Types.ObjectId;
@@ -93,6 +94,7 @@ const complaintSchema = new Schema<IComplaint>(
       coordinates: { type: [Number], required: true },
     },
     address: { type: String },
+    region: { type: String },
     images: [
       {
         publicId: { type: String, required: true },

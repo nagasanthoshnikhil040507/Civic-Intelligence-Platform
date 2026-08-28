@@ -44,12 +44,42 @@ export const getComplaints = async (req: Request, res: Response) => {
     const skip = (page - 1) * limit;
 
     const query: any = { isDeleted: false };
+    
+    // Status and Category
     if (req.query.status) query.status = req.query.status;
     if (req.query.category) query.category = req.query.category;
+    if (req.query.region) query.region = req.query.region;
+    
+    // Period filter
+    const period = req.query.period as string;
+    if (period && period !== 'all') {
+      const days = parseInt(period.replace('d', ''));
+      if (!isNaN(days)) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        query.createdAt = { $gte: date };
+      } else if (period.endsWith('m')) {
+        const m = parseInt(period.replace('m', ''));
+        if (!isNaN(m)) {
+          const date = new Date();
+          date.setDate(date.getDate() - (m * 30));
+          query.createdAt = { $gte: date };
+        }
+      } else if (period.endsWith('y')) {
+        const y = parseInt(period.replace('y', ''));
+        if (!isNaN(y)) {
+          const date = new Date();
+          date.setDate(date.getDate() - (y * 365));
+          query.createdAt = { $gte: date };
+        }
+      }
+    }
+
     if (req.query.search) {
       query.$or = [
         { title: { $regex: req.query.search, $options: 'i' } },
-        { description: { $regex: req.query.search, $options: 'i' } }
+        { description: { $regex: req.query.search, $options: 'i' } },
+        { region: { $regex: req.query.search, $options: 'i' } }
       ];
     }
 
@@ -211,36 +241,114 @@ export const updateUserStatus = async (req: Request, res: Response) => {
 
 export const getAiInsights = async (req: Request, res: Response) => {
   try {
-    // 1. Category Trends
+    const period = req.query.period as string;
+    const matchQuery: any = { isDeleted: false };
+    
+    if (period && period !== 'all') {
+      const days = parseInt(period.replace('d', ''));
+      if (!isNaN(days)) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        matchQuery.createdAt = { $gte: date };
+      }
+    }
+
+    // 1. Category Trends (Pie Chart)
     const categoryTrends = await Complaint.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: matchQuery },
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
 
-    // 2. High Priority Unresolved
+    // 2. Region Trends (Stacked Bar Chart)
+    const regionTrends = await Complaint.aggregate([
+      { $match: matchQuery },
+      {
+        $addFields: {
+          coords: { $ifNull: ["$location.coordinates", [0, 0]] }
+        }
+      },
+      {
+        $addFields: {
+          lat: { $arrayElemAt: ["$coords", 1] },
+          lng: { $arrayElemAt: ["$coords", 0] }
+        }
+      },
+      {
+        $addFields: {
+          derivedRegion: {
+            $cond: {
+              if: { $or: [{ $eq: ["$lat", 0] }, { $eq: ["$lat", null] }] },
+              then: "Unspecified Area",
+              else: {
+                $concat: [
+                  "Geo-Sector ",
+                  { $toString: { $round: ["$lat", 2] } },
+                  "N, ",
+                  { $toString: { $round: ["$lng", 2] } },
+                  "E"
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: { 
+            region: { $ifNull: ["$address", "$derivedRegion"] }, 
+            category: "$category" 
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.region",
+          total: { $sum: "$count" },
+          categories: {
+            $push: {
+              k: { $ifNull: ["$_id.category", "Unknown"] },
+              v: "$count"
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          region: "$_id",
+          total: 1,
+          categories: { $arrayToObject: "$categories" }
+        }
+      },
+      { $sort: { total: -1 } },
+      { $limit: 15 }
+    ]);
+
+    // 3. High Priority Unresolved
     const highPriorityUnresolved = await Complaint.find({
-      isDeleted: false,
+      ...matchQuery,
       status: { $nin: ['resolved', 'closed', 'rejected'] },
       $or: [
         { priority: { $gte: 75 } },
-        { 'aiAnalysis.priority': { $gte: 75 } } // Support for numeric AI priority
+        { 'aiAnalysis.priority': { $gte: 75 } }
       ]
     })
     .sort({ createdAt: -1 })
     .limit(10)
     .populate('citizenId', 'firstName lastName');
 
-    // 3. Duplicate Intelligence
+    // 4. Duplicate Intelligence
     const duplicateCount = await Complaint.countDocuments({
-      isDeleted: false,
+      ...matchQuery,
       'aiAnalysis.duplicateDetected': true
     });
 
-    // 4. AI Processed Overview
-    const totalComplaints = await Complaint.countDocuments({ isDeleted: false });
+    // 5. AI Processed Overview
+    const totalComplaints = await Complaint.countDocuments(matchQuery);
     const aiProcessedCount = await Complaint.countDocuments({
-      isDeleted: false,
+      ...matchQuery,
       'aiAnalysis.analyzedAt': { $exists: true, $ne: null }
     });
 
@@ -248,6 +356,7 @@ export const getAiInsights = async (req: Request, res: Response) => {
       success: true,
       data: {
         categoryTrends,
+        regionTrends,
         highPriorityUnresolved,
         duplicateIntelligence: {
           totalDuplicates: duplicateCount

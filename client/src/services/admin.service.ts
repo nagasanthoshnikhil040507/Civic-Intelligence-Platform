@@ -6,12 +6,17 @@ export const AdminService = {
     return res.data.data;
   },
 
-  getAiInsights: async () => {
-    const res = await api.get('/admin/ai-insights');
+  getAiInsights: async (period?: string) => {
+    const res = await api.get('/admin/ai-insights', { params: { period } });
     return res.data.data;
   },
 
-  getComplaints: async (params?: { page?: number; limit?: number; status?: string; category?: string; search?: string }) => {
+  getAnalytics: async (period?: string) => {
+    const res = await api.get('/admin/analytics', { params: { period } });
+    return res.data.data;
+  },
+
+  getComplaints: async (params?: { page?: number; limit?: number; status?: string; category?: string; search?: string; period?: string; region?: string }) => {
     const res = await api.get('/admin/complaints', { params });
     return res.data.data;
   },

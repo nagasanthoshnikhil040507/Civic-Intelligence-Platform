@@ -91,9 +91,9 @@ export default function AdminInsights() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="AI Processing Rate"
-          value={`${insights.aiOverview?.processingRate.toFixed(1)}%`}
+          value={insights.aiOverview ? `${insights.aiOverview.processingRate.toFixed(1)}%` : '0%'}
           icon={<Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />}
-          trend={{ value: `${insights.aiOverview?.aiProcessedCount} of ${insights.aiOverview?.totalComplaints} analyzed`, isPositive: true }}
+          trend={{ value: insights.aiOverview ? `${insights.aiOverview.aiProcessedCount} of ${insights.aiOverview.totalComplaints} analyzed` : '0 of 0 analyzed', isPositive: true }}
         />
         <StatCard
           title="Duplicate Intelligence"

@@ -13,6 +13,8 @@ import { authenticate } from '../../auth/middleware/auth.middleware';
 import { requireRole } from '../../auth/middleware/rbac.middleware';
 import { Role } from '../../auth/constants/roles';
 
+import { getAnalytics } from '../controllers/admin.analytics';
+
 const router = Router();
 
 // Protect all admin routes
@@ -20,6 +22,7 @@ router.use(authenticate);
 router.use(requireRole([Role.ADMIN]));
 
 router.get('/stats', getSystemStats);
+router.get('/analytics', getAnalytics);
 router.get('/ai-insights', getAiInsights);
 
 // Complaint Management
