@@ -45,6 +45,7 @@ export interface IComplaint extends Document {
     proofImages: string[];
     resolutionNote: string;
   };
+  activeTransferRequest?: Types.ObjectId;
   aiAnalysis?: {
     garbageDetected?: boolean;
     confidence?: number;
@@ -62,6 +63,31 @@ export interface IComplaint extends Document {
     locationScore?: number;
     textScore?: number;
     imageScore?: number;
+  };
+  resolutionReport?: {
+    status: 'SUBMITTED' | 'COMPLETED' | 'REJECTED';
+    submittedAt: Date;
+    submittedByOfficerId: Types.ObjectId;
+    complaintSnapshot: any;
+    workTimelineSnapshot: {
+      workStartedAt?: Date;
+      estimatedCompletionAt?: Date;
+      actualCompletionAt?: Date;
+      performance?: string;
+    };
+    resolutionDetails: {
+      description: string;
+      notes?: string;
+    };
+    proofSnapshot: any[];
+    adminReview?: {
+      decision: 'COMPLETED' | 'REJECTED';
+      note?: string;
+      reviewedAt: Date;
+      reviewedBy: Types.ObjectId;
+      signatureImage: string;
+      verificationId?: string;
+    };
   };
   tags: string[];
   attachments: string[];
@@ -126,6 +152,7 @@ const complaintSchema = new Schema<IComplaint>(
       proofImages: [{ type: String }],
       resolutionNote: { type: String },
     },
+    activeTransferRequest: { type: Schema.Types.ObjectId, ref: 'TransferRequest', default: null },
     aiAnalysis: {
       garbageDetected: { type: Boolean },
       confidence: { type: Number },
@@ -143,6 +170,31 @@ const complaintSchema = new Schema<IComplaint>(
       locationScore: { type: Number },
       textScore: { type: Number },
       imageScore: { type: Number }
+    },
+    resolutionReport: {
+      status: { type: String, enum: ['SUBMITTED', 'COMPLETED', 'REJECTED'] },
+      submittedAt: { type: Date },
+      submittedByOfficerId: { type: Schema.Types.ObjectId, ref: 'User' },
+      complaintSnapshot: { type: Schema.Types.Mixed },
+      workTimelineSnapshot: {
+        workStartedAt: { type: Date },
+        estimatedCompletionAt: { type: Date },
+        actualCompletionAt: { type: Date },
+        performance: { type: String }
+      },
+      resolutionDetails: {
+        description: { type: String },
+        notes: { type: String }
+      },
+      proofSnapshot: [{ type: Schema.Types.Mixed }],
+      adminReview: {
+        decision: { type: String, enum: ['COMPLETED', 'REJECTED'] },
+        note: { type: String },
+        reviewedAt: { type: Date },
+        reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        signatureImage: { type: String },
+        verificationId: { type: String }
+      }
     },
     tags: [{ type: String }],
     attachments: [{ type: String }],

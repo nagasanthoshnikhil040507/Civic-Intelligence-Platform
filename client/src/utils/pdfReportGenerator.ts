@@ -428,6 +428,60 @@ export const generateOfficialReport = async (complaint: any) => {
     doc.text(notesSplit, 55, yPos + 44);
   }
 
+  yPos += 65;
+
+  if (complaint.resolutionReport?.adminReview?.decision === 'COMPLETED') {
+    const adminReview = complaint.resolutionReport.adminReview;
+    
+    checkPageBreak(80);
+    
+    doc.setFillColor(240, 253, 244);
+    doc.setDrawColor(74, 222, 128);
+    doc.setLineWidth(1);
+    doc.roundedRect(14, yPos, 182, 60, 2, 2, 'FD');
+    doc.setLineWidth(0.1); // reset
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 163, 74);
+    doc.text('ADMINISTRATOR VERIFICATION', 20, yPos + 12);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.text('Status:', 20, yPos + 22);
+    doc.setFont('helvetica', 'normal');
+    doc.text('COMPLETED & VERIFIED', 40, yPos + 22);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Verification ID:', 20, yPos + 30);
+    doc.setFont('helvetica', 'normal');
+    doc.text(adminReview.verificationId || 'N/A', 50, yPos + 30);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Date Verified:', 20, yPos + 38);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(adminReview.reviewedAt), 'PPpp'), 50, yPos + 38);
+
+    if (adminReview.note) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Review Note:', 20, yPos + 46);
+      doc.setFont('helvetica', 'normal');
+      const noteSplit = doc.splitTextToSize(adminReview.note, 140);
+      doc.text(noteSplit, 50, yPos + 46);
+    }
+
+    if (adminReview.signatureImage) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Authorized Signature:', 120, yPos + 22);
+      
+      try {
+        doc.addImage(adminReview.signatureImage, 'PNG', 120, yPos + 25, 60, 30);
+      } catch (e) {
+        console.warn('Could not add signature image to PDF');
+      }
+    }
+  }
+
   // Apply footers to all pages
   const pageCount = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {

@@ -1,62 +1,55 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export interface INotification extends Document {
-  userId: Types.ObjectId;
+  recipientId?: Types.ObjectId; // null for generic admin broadcasts
+  recipientRole: 'admin' | 'officer' | 'citizen' | 'all';
+  senderId?: Types.ObjectId;
+  senderRole?: 'admin' | 'officer' | 'citizen' | 'system';
+  
+  type: string;
   title: string;
   message: string;
-  type: 'status_update' | 'assignment' | 'system_alert' | 'resolution';
-  relatedEntity: {
-    entityModel: 'Complaint' | 'Department' | 'User';
-    entityId: Types.ObjectId;
-  };
-  channels: {
-    inApp: boolean;
-    email: boolean;
-    sms: boolean;
-  };
-  deliveryStatus: {
-    emailSent: boolean;
-    smsSent: boolean;
-  };
+  
+  complaintId?: Types.ObjectId;
+  transferRequestId?: Types.ObjectId;
+  
   isRead: boolean;
   readAt?: Date;
+  
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  
+  metadata?: any;
+  
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const notificationSchema = new Schema<INotification>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    recipientId: { type: Schema.Types.ObjectId, ref: 'User' },
+    recipientRole: { type: String, enum: ['admin', 'officer', 'citizen', 'all'], required: true },
+    senderId: { type: Schema.Types.ObjectId, ref: 'User' },
+    senderRole: { type: String, enum: ['admin', 'officer', 'citizen', 'system'] },
+    
+    type: { type: String, required: true },
     title: { type: String, required: true },
     message: { type: String, required: true },
-    type: {
-      type: String,
-      enum: ['status_update', 'assignment', 'system_alert', 'resolution'],
-      required: true,
-    },
-    relatedEntity: {
-      entityModel: { type: String, enum: ['Complaint', 'Department', 'User'], required: true },
-      entityId: { type: Schema.Types.ObjectId, required: true },
-    },
-    channels: {
-      inApp: { type: Boolean, default: true },
-      email: { type: Boolean, default: false },
-      sms: { type: Boolean, default: false },
-    },
-    deliveryStatus: {
-      emailSent: { type: Boolean, default: false },
-      smsSent: { type: Boolean, default: false },
-    },
+    
+    complaintId: { type: Schema.Types.ObjectId, ref: 'Complaint' },
+    transferRequestId: { type: Schema.Types.ObjectId, ref: 'TransferRequest' },
+    
     isRead: { type: Boolean, default: false },
     readAt: { type: Date },
+    
+    priority: { type: String, enum: ['LOW', 'NORMAL', 'HIGH', 'URGENT'], default: 'NORMAL' },
+    
+    metadata: { type: Schema.Types.Mixed }
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  { timestamps: true }
 );
 
-// Indexes
-// Explanation:
-// Compound index on (userId, isRead) to quickly fetch unread notifications for the user's bell icon.
-// Index on createdAt to easily clear old notifications (TTL could also be added here).
-notificationSchema.index({ userId: 1, isRead: 1 });
+notificationSchema.index({ recipientId: 1, isRead: 1 });
+notificationSchema.index({ recipientRole: 1, isRead: 1 });
 notificationSchema.index({ createdAt: -1 });
 
 export const Notification = model<INotification>('Notification', notificationSchema);

@@ -18,6 +18,8 @@ export default function AdminUserDetails() {
   // Modal state
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<'active' | 'inactive' | 'suspended'>('active');
+  const [showChangeDept, setShowChangeDept] = useState(false);
+  const [pendingDept, setPendingDept] = useState<'SANITATION' | 'ROADS' | 'UNASSIGNED' | ''>('');
 
   useEffect(() => {
     if (id) {
@@ -212,6 +214,111 @@ export default function AdminUserDetails() {
               </div>
             )}
           </div>
+
+          {user.role === 'officer' && (
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-500" /> Department Assignment
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="text-sm text-slate-500 mb-2 space-y-1">
+                  <div>Requested Department: <span className="font-semibold text-slate-700">{user.requestedDepartment || 'None'}</span></div>
+                  <div>Current Department: <span className="font-semibold text-slate-700">{user.department || 'UNASSIGNED'}</span></div>
+                  <div>Department Status: <span className={`font-semibold ${user.departmentStatus === 'APPROVED' ? 'text-green-600' : 'text-amber-500'}`}>{user.departmentStatus || 'PENDING'}</span></div>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  {user.departmentStatus === 'PENDING' && user.requestedDepartment && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          setIsUpdating(true);
+                          await AdminService.updateUserDepartment(user._id, user.requestedDepartment);
+                          fetchData(user._id);
+                          setSuccessMsg('Requested department approved successfully');
+                        } catch (err: any) {
+                          setError(err.response?.data?.message || 'Failed to approve department');
+                        } finally {
+                          setIsUpdating(false);
+                        }
+                      }}
+                      disabled={isUpdating}
+                      className="w-full py-2 px-4 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-lg transition-colors text-sm disabled:opacity-50 mb-2"
+                    >
+                      Approve Requested Department
+                    </button>
+                  )}
+
+                  {user.departmentStatus === 'APPROVED' && user.department !== 'UNASSIGNED' && (
+                    <div className="bg-emerald-50 text-emerald-800 p-3 rounded-lg border border-emerald-200 mb-2 flex items-center gap-2">
+                      <div className="bg-emerald-100 p-1 rounded-full w-5 h-5 flex items-center justify-center font-bold">✓</div>
+                      <span className="text-sm font-medium">Officer is currently assigned to {user.department.charAt(0) + user.department.slice(1).toLowerCase()} Department</span>
+                    </div>
+                  )}
+
+                  {((user.departmentStatus === 'APPROVED' && user.department !== 'UNASSIGNED') || (!user.requestedDepartment && user.department === 'UNASSIGNED')) && !showChangeDept && (
+                    <button
+                      onClick={() => setShowChangeDept(true)}
+                      className="w-full py-2 px-4 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-medium rounded-lg transition-colors text-sm"
+                    >
+                      {user.department === 'UNASSIGNED' ? 'Assign to Department' : 'Change Department'}
+                    </button>
+                  )}
+
+                  {showChangeDept && (
+                    <div className="mt-2 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                      <p className="text-sm font-semibold mb-3">Select New Department:</p>
+                      <div className="space-y-3 mb-4">
+                        {user.department !== 'SANITATION' && (
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" name="dept" value="SANITATION" checked={pendingDept === 'SANITATION'} onChange={(e) => setPendingDept(e.target.value as any)} className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
+                            <span className="font-medium text-slate-700">SANITATION</span>
+                          </label>
+                        )}
+                        {user.department !== 'ROADS' && (
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" name="dept" value="ROADS" checked={pendingDept === 'ROADS'} onChange={(e) => setPendingDept(e.target.value as any)} className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
+                            <span className="font-medium text-slate-700">ROADS</span>
+                          </label>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            if (!pendingDept) return;
+                            try {
+                              setIsUpdating(true);
+                              await AdminService.updateUserDepartment(user._id, pendingDept);
+                              fetchData(user._id);
+                              setShowChangeDept(false);
+                              setPendingDept('');
+                              setSuccessMsg('Department updated successfully');
+                            } catch (err: any) {
+                              setError(err.response?.data?.message || 'Failed to update department');
+                            } finally {
+                              setIsUpdating(false);
+                            }
+                          }}
+                          disabled={!pendingDept || isUpdating}
+                          className="flex-1 py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors text-sm disabled:opacity-50"
+                        >
+                          Confirm {user.department === 'UNASSIGNED' ? 'Assignment' : 'Change'}
+                        </button>
+                        <button
+                          onClick={() => { setShowChangeDept(false); setPendingDept(''); }}
+                          disabled={isUpdating}
+                          className="flex-1 py-2 px-4 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-medium rounded-lg transition-colors text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

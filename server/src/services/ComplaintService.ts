@@ -127,8 +127,9 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
     // Admin always has access
     // Wait, we don't know if they are admin here, but usually admin doesn't hit this. We assume officer.
     
-    // Check if directly assigned
-    const isAssigned = complaint.assignmentHistory?.some((a: any) => a.officerId.toString() === officerId);
+    // Check if directly assigned (must be the CURRENT assignee, i.e., the last one in the history)
+    const isAssigned = complaint.assignmentHistory && complaint.assignmentHistory.length > 0 
+      && complaint.assignmentHistory[complaint.assignmentHistory.length - 1].officerId.toString() === officerId;
     if (isAssigned) return true;
 
     // Check if in officer's department
@@ -143,6 +144,11 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
     // If neither assigned directly nor in their department, and it's already claimed/assigned
     if (complaint.status !== 'pending' && complaint.departmentId) {
        throw new ApiError(403, 'Forbidden: You cannot edit complaints assigned to other departments');
+    }
+
+    // CHECK CRITICAL OPERATIONAL LOCK (Transfer Request Pending)
+    if (complaint.activeTransferRequest) {
+      throw new ApiError(403, 'Complaint operations are temporarily locked because a transfer request is pending admin review.');
     }
 
     return true;
@@ -227,22 +233,65 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
       proofImages = results.map(result => result.secure_url);
     }
 
+    const inProgressEvent = complaint.timeline?.slice().reverse().find((t: any) => t.status === 'in_progress');
+    const workStartedAt = inProgressEvent ? inProgressEvent.timestamp : undefined;
+    const actualCompletionAt = new Date();
+
+    // In a real app we'd have estimatedCompletionAt mapped from priority or category.
+    // For now we'll set a placeholder of 48h from start.
+    const estimatedCompletionAt = workStartedAt ? new Date(workStartedAt.getTime() + 48 * 60 * 60 * 1000) : undefined;
+    
+    let performance = 'N/A';
+    if (workStartedAt && estimatedCompletionAt) {
+      const diffMs = estimatedCompletionAt.getTime() - actualCompletionAt.getTime();
+      const diffHours = Math.abs(Math.floor(diffMs / (1000 * 60 * 60)));
+      const diffMinutes = Math.abs(Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)));
+      if (diffMs >= 0) {
+        performance = `COMPLETED EARLY BY ${diffHours} HOURS ${diffMinutes} MINUTES`;
+      } else {
+        performance = `LATE BY ${diffHours} HOURS ${diffMinutes} MINUTES`;
+      }
+    }
+
     return this.update(complaintId, {
       $set: { 
         status: 'resolved',
         resolutionDetails: {
-          resolvedAt: new Date(),
+          resolvedAt: actualCompletionAt,
           resolvedBy: new Types.ObjectId(officerId),
           resolutionNote,
           proofImages
+        },
+        resolutionReport: {
+          status: 'SUBMITTED',
+          submittedAt: actualCompletionAt,
+          submittedByOfficerId: new Types.ObjectId(officerId),
+          complaintSnapshot: {
+            title: complaint.title,
+            category: complaint.category,
+            description: complaint.description,
+            address: complaint.address || 'N/A',
+            createdAt: complaint.createdAt
+          },
+          workTimelineSnapshot: {
+            workStartedAt,
+            estimatedCompletionAt,
+            actualCompletionAt,
+            performance
+          },
+          resolutionDetails: {
+            description: resolutionNote,
+            notes: resolutionNote
+          },
+          proofSnapshot: proofImages
         }
       },
       $push: {
         timeline: {
           status: 'resolved',
           updatedBy: new Types.ObjectId(officerId),
-          timestamp: new Date(),
-          note: resolutionNote
+          timestamp: actualCompletionAt,
+          note: 'Officer submitted resolution report. Pending admin review.'
         }
       }
     } as any);
@@ -253,7 +302,17 @@ export class ComplaintService extends BaseService<IComplaint, ComplaintRepositor
     
     if (user.role === 'citizen') {
       filter.citizenId = user.userId;
-    } 
+    } else if (user.role === 'officer') {
+      // Security Requirement: Officer must only see complaints CURRENTLY assigned to them
+      // Use mongoose Types.ObjectId
+      const { Types } = require('mongoose');
+      filter.$expr = {
+        $eq: [
+          { $arrayElemAt: ['$assignmentHistory.officerId', -1] },
+          new Types.ObjectId(user.userId)
+        ]
+      };
+    }
 
     if (queryData.status) filter.status = queryData.status;
     if (queryData.category) filter.category = queryData.category;

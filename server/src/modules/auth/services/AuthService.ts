@@ -51,7 +51,7 @@ export class AuthService {
 
     const passwordHash = await this.hashPassword(data.password);
 
-    const userData = {
+    const userData: any = {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
@@ -61,6 +61,10 @@ export class AuthService {
       phone: data.phone,
       emailVerified: false,
     };
+
+    if (data.department) userData.department = data.department;
+    if (data.requestedDepartment !== undefined) userData.requestedDepartment = data.requestedDepartment;
+    if (data.departmentStatus) userData.departmentStatus = data.departmentStatus;
 
     const user = await userService.createUser(userData);
 

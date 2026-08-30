@@ -97,7 +97,13 @@ export default function Profile() {
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Department</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white capitalize">{user.department.replace('_', ' ')}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      {user.department === 'SANITATION' ? 'Sanitation Department' : 
+                       user.department === 'ROADS' ? 'Roads Department' : 'Unassigned'}
+                    </p>
+                    {user.requestedDepartment && user.departmentStatus === 'PENDING' && (
+                      <p className="text-xs font-semibold text-amber-600 mt-1">Requested: {user.requestedDepartment} (Pending Approval)</p>
+                    )}
                   </div>
                 </div>
               )}

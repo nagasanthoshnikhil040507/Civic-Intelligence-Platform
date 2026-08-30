@@ -10,6 +10,10 @@ const registerSchema = z.object({
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().min(2, 'Last name is required'),
   email: z.string().email('Invalid email address'),
+  phone: z.string().optional(),
+  department: z.enum(['SANITATION', 'ROADS'], {
+    required_error: "Please select a department",
+  }),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number'),
@@ -25,7 +29,7 @@ export default function OfficerRegister() {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState('');
   
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
@@ -77,15 +81,53 @@ export default function OfficerRegister() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700" htmlFor="email">Official Email</label>
+              <input
+                {...register('email')}
+                id="email"
+                type="email"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700" htmlFor="phone">Phone Number (Optional)</label>
+              <input
+                {...register('phone')}
+                id="phone"
+                type="tel"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              {errors.phone && <p className="text-sm text-red-500">{errors.phone.message}</p>}
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700" htmlFor="email">Email</label>
-            <input
-              {...register('email')}
-              id="email"
-              type="email"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            />
-            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            <label className="text-sm font-medium text-slate-700" htmlFor="department">Department</label>
+            <select
+              {...register('department')}
+              id="department"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white"
+            >
+              <option value="">Select a department...</option>
+              <option value="SANITATION">Sanitation Department</option>
+              <option value="ROADS">Roads Department</option>
+            </select>
+            {errors.department && <p className="text-sm text-red-500">{errors.department.message}</p>}
+            
+            {watch('department') === 'SANITATION' && (
+              <div className="p-3 mt-2 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-emerald-800">
+                <span className="font-semibold">Sanitation Department:</span> Responsible for waste management and sanitation-related civic complaints.
+              </div>
+            )}
+            {watch('department') === 'ROADS' && (
+              <div className="p-3 mt-2 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+                <span className="font-semibold">Roads Department:</span> Responsible for road damage and road infrastructure-related civic complaints.
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

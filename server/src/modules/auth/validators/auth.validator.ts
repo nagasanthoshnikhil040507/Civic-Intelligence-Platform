@@ -5,6 +5,7 @@ export const registerSchema = z.object({
   lastName: z.string().min(2).max(50),
   email: z.string().email(),
   password: z.string().min(8),
+  department: z.enum(['SANITATION', 'ROADS', 'UNASSIGNED']).optional(),
 });
 
 export const loginSchema = z.object({

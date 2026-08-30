@@ -29,6 +29,7 @@ router.patch('/:id/assign', enforceRole([Role.OFFICER, Role.ADMIN]), ComplaintCo
 router.patch('/:id/status', enforceRole([Role.OFFICER, Role.ADMIN]), ComplaintController.updateStatus);
 router.post('/:id/resolve', enforceRole([Role.OFFICER, Role.ADMIN]), upload.array('images', 5), ComplaintController.resolve);
 router.post('/:id/analyze', enforceRole([Role.OFFICER, Role.ADMIN]), ComplaintController.analyze);
+router.post('/:id/transfer-request', enforceRole([Role.OFFICER]), ComplaintController.requestTransfer);
 
 router.post('/:id/images', 
   enforceRole([Role.CITIZEN, Role.ADMIN]), 

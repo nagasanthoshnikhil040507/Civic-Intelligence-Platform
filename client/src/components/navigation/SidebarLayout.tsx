@@ -5,6 +5,8 @@ import { useLogout } from '@/hooks/useLogout';
 import { useState } from 'react';
 import { cn } from '../ui/GlassCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { NotificationBell } from '../notifications/NotificationBell';
+import { LoginNotificationPopup } from '../notifications/LoginNotificationPopup';
 
 interface NavItem {
   name: string;
@@ -97,13 +99,21 @@ export function SidebarLayout({ children, navItems }: SidebarLayoutProps) {
             </div>
             <span className="font-bold tracking-tight text-slate-900 dark:text-white">Civic Intel</span>
           </div>
-          <button 
-            onClick={() => setMobileMenuOpen(true)}
-            className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
         </header>
+
+        {/* Desktop Top Nav (Only visible on MD+) */}
+        <div className="hidden md:flex h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-20 items-center justify-end px-6">
+          <NotificationBell />
+        </div>
 
         {/* Mobile Menu Overlay */}
         <AnimatePresence>
@@ -152,7 +162,9 @@ export function SidebarLayout({ children, navItems }: SidebarLayoutProps) {
           )}
         </AnimatePresence>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        {/* Page Content */}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 md:p-6 lg:p-8">
+          <LoginNotificationPopup />
           {children}
         </main>
       </div>

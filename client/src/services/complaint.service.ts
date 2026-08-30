@@ -69,6 +69,8 @@ export interface ComplaintResponse {
   department?: any; // If populated
   updatedAt?: string;
   createdAt: string;
+  activeTransferRequest?: string | any;
+  assignmentHistory?: any[];
 }
 
 export class ComplaintService {
@@ -95,6 +97,16 @@ export class ComplaintService {
 
   static async getComplaintsPaginated(params?: Record<string, any>): Promise<any> {
     const response = await api.get('/complaints', { params });
+    return response.data.data;
+  }
+
+  static async getDashboardStats(): Promise<any> {
+    const response = await api.get('/complaints/dashboard-stats');
+    return response.data.data;
+  }
+
+  static async requestTransfer(id: string, reason: string): Promise<ComplaintResponse> {
+    const response = await api.post(`/complaints/${id}/transfer-request`, { reason });
     return response.data.data;
   }
 

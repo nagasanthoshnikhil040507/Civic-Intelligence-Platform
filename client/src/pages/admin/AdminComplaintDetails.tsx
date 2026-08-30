@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AdminService } from '@/services/admin.service';
-import { Loader2, ArrowLeft, MapPin, Calendar, User, Shield, Clock, FileText, Printer, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowLeft, MapPin, Calendar, User, Shield, Clock, FileText, Printer, CheckCircle2, ArrowRightLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateOfficialReport } from '@/utils/pdfReportGenerator';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { getDepartmentForCategory } from '@/utils/departmentMapping';
+import { AdminReportReview } from '@/components/complaints/AdminReportReview';
 
 export default function AdminComplaintDetails() {
   const { id } = useParams<{ id: string }>();
@@ -29,12 +31,16 @@ export default function AdminComplaintDetails() {
     setIsLoading(true);
     setError('');
     try {
-      const [compRes, offRes] = await Promise.all([
-        AdminService.getComplaintDetails(complaintId),
-        AdminService.getUsers({ role: 'officer', status: 'active', limit: 100 })
-      ]);
+      const compRes = await AdminService.getComplaintDetails(complaintId);
       setComplaint(compRes);
-      setOfficers(offRes.users);
+      
+      const reqDept = getDepartmentForCategory(compRes.category);
+      if (reqDept !== 'UNASSIGNED') {
+        const offRes = await AdminService.getDepartmentOfficersWorkload(reqDept);
+        setOfficers(offRes);
+      } else {
+        setOfficers([]);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load data');
     } finally {
@@ -59,7 +65,7 @@ export default function AdminComplaintDetails() {
   };
 
   const handlePrintPDF = async () => {
-    if (!complaint || complaint.status.toUpperCase() !== 'RESOLVED') return;
+    if (!complaint || complaint.status.toUpperCase() !== 'CLOSED') return;
     setIsGeneratingPDF(true);
     try {
       await generateOfficialReport(complaint);
@@ -107,7 +113,7 @@ export default function AdminComplaintDetails() {
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </button>
 
-        {isResolved && (
+        {complaint.status.toLowerCase() === 'closed' && (
           <button
             onClick={handlePrintPDF}
             disabled={isGeneratingPDF}
@@ -184,7 +190,7 @@ export default function AdminComplaintDetails() {
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Time Reported</h4>
                   <span className="text-sm font-semibold text-slate-900 dark:text-white print:text-black">
-                    {format(new Date(complaint.createdAt), 'PPpp')}
+                    {complaint.createdAt ? format(new Date(complaint.createdAt), 'PPpp') : 'Unknown'}
                   </span>
                 </div>
               </div>
@@ -287,6 +293,11 @@ export default function AdminComplaintDetails() {
             )}
           </GlassCard>
 
+          {/* Report Review Section */}
+          {complaint.resolutionReport && complaint.resolutionReport.submittedAt && ['resolved', 'closed'].includes(complaint.status.toLowerCase()) && (
+            <AdminReportReview complaint={complaint} onReviewed={() => fetchData(id!)} />
+          )}
+
           {/* Assignment Section */}
           <GlassCard className="p-6 border-t-4 border-t-indigo-500">
             <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2">
@@ -322,22 +333,167 @@ export default function AdminComplaintDetails() {
                   )}
                 </div>
               </div>
+            ) : (complaint.assignmentHistory && complaint.assignmentHistory.length > 0) || ['assigned', 'in_progress'].includes(complaint.status.toLowerCase()) ? (
+              <div className="space-y-4">
+                <div className="p-5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+                  <div className="flex items-center gap-2 mb-4 text-indigo-700 dark:text-indigo-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span className="text-xs font-black uppercase tracking-widest">Current Assignment</span>
+                  </div>
+                  
+                  {(() => {
+                    const currentAssignment = complaint.assignmentHistory[complaint.assignmentHistory.length - 1];
+                    const currentOfficer = currentAssignment?.officerId;
+                    const isPopulated = currentOfficer && typeof currentOfficer === 'object' && currentOfficer.firstName;
+                    
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full shadow-sm flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                            <User className="w-6 h-6 text-slate-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-0.5">Assigned Officer</p>
+                            <p className="text-base font-bold text-slate-900 dark:text-white">
+                              {isPopulated ? `${currentOfficer.firstName} ${currentOfficer.lastName}` : 'Unknown Officer'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-indigo-100/50 dark:border-indigo-800/30">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Department</p>
+                            <span className={`inline-flex px-2 py-1 rounded text-xs font-bold ${
+                              getDepartmentForCategory(complaint.category) === 'SANITATION' ? 'bg-emerald-100 text-emerald-700' :
+                              getDepartmentForCategory(complaint.category) === 'ROADS' ? 'bg-blue-100 text-blue-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}>
+                              {getDepartmentForCategory(complaint.category) === 'SANITATION' ? 'Sanitation' :
+                               getDepartmentForCategory(complaint.category) === 'ROADS' ? 'Roads' : 'Unassigned'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Assigned On</p>
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              {currentAssignment?.assignedAt ? format(new Date(currentAssignment.assignedAt), 'dd MMM yyyy, hh:mm a') : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
+                  <Shield className="w-4 h-4 text-slate-500 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">🔒 Assignment Locked</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                      Direct reassignment is disabled. Any officer transfer must follow the official transfer request process.
+                    </p>
+                  </div>
+                </div>
+
+                {complaint.activeTransferRequest && (
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/50 mt-4">
+                    <ArrowRightLeft className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-amber-800 dark:text-amber-500">Transfer Request Pending</p>
+                      <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-1">
+                        The assigned officer has requested a transfer.
+                      </p>
+                      <button 
+                        onClick={() => navigate(`/admin/transfer-requests/${complaint.activeTransferRequest}`)}
+                        className="mt-3 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-md transition-colors"
+                      >
+                        Review Transfer Request
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="space-y-4">
+                {/* Department Info */}
+                <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Category</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white capitalize">{complaint.category}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Responsible Dept</span>
+                    <span className={`text-sm font-bold ${
+                      getDepartmentForCategory(complaint.category) === 'SANITATION' ? 'text-emerald-600 dark:text-emerald-400' :
+                      getDepartmentForCategory(complaint.category) === 'ROADS' ? 'text-blue-600 dark:text-blue-400' :
+                      'text-amber-600 dark:text-amber-400'
+                    }`}>
+                      {getDepartmentForCategory(complaint.category) === 'SANITATION' ? 'Sanitation Department' :
+                       getDepartmentForCategory(complaint.category) === 'ROADS' ? 'Roads Department' : 'Unassigned / Needs Review'}
+                    </span>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-2">Select Officer</label>
-                  <select
-                    value={selectedOfficer}
-                    onChange={(e) => setSelectedOfficer(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-900 dark:text-white transition-all cursor-pointer"
-                  >
-                    <option value="" className="text-slate-500">-- Select Officer --</option>
-                    {officers.map(off => (
-                      <option key={off._id} value={off._id} className="text-slate-900 dark:text-white">
-                        {off.firstName} {off.lastName}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-3">Select Officer</label>
+                  
+                  {getDepartmentForCategory(complaint.category) === 'UNASSIGNED' ? (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
+                      <p className="text-sm font-bold text-amber-700">Department Mapping Required</p>
+                      <p className="text-xs text-amber-600 mt-1">This complaint category is not mapped to a department. Unrestricted assignment is blocked for security.</p>
+                    </div>
+                  ) : officers.length === 0 ? (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                      <p className="text-sm font-semibold text-slate-600">No approved active officers are currently available in the {getDepartmentForCategory(complaint.category)} Department.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                      {(() => {
+                        const minWorkload = Math.min(...officers.map(o => o.workload?.activeWorkload || 0));
+                        return officers.map(off => (
+                          <div 
+                            key={off._id}
+                            onClick={() => setSelectedOfficer(off._id)}
+                            className={`p-3 border rounded-xl cursor-pointer transition-all ${
+                              selectedOfficer === off._id 
+                                ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' 
+                                : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50 bg-white'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="font-bold text-slate-900 text-sm">
+                                {off.firstName} {off.lastName}
+                              </div>
+                              {(off.workload?.activeWorkload === minWorkload && officers.length > 1) && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                                  Lowest Workload
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="bg-slate-50 p-2 rounded-lg">
+                                <div className="text-[10px] uppercase font-bold text-slate-500">Active Workload</div>
+                                <div className="text-lg font-black text-indigo-600 leading-none mt-1">{off.workload?.activeWorkload || 0}</div>
+                                <div className="text-[10px] text-slate-500 mt-1">
+                                  ({off.workload?.assigned || 0} Assigned, {off.workload?.inProgress || 0} In Progress)
+                                </div>
+                              </div>
+                              <div className="bg-slate-50 p-2 rounded-lg flex flex-col justify-between">
+                                <div>
+                                  <div className="text-[10px] uppercase font-bold text-slate-500">Resolved</div>
+                                  <div className="text-sm font-bold text-slate-700 mt-0.5">{off.workload?.resolved || 0}</div>
+                                </div>
+                                <div>
+                                  <div className="text-[10px] uppercase font-bold text-slate-500 mt-1">Total Cases</div>
+                                  <div className="text-sm font-bold text-slate-700">{off.workload?.totalAssigned || 0}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={handleAssign}

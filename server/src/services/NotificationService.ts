@@ -1,30 +1,87 @@
-import { BaseService } from './BaseService';
-import { NotificationRepository } from '../database/repositories/NotificationRepository';
-import { INotification } from '../database/models/Notification';
-import { ClientSession } from 'mongoose';
+import { Notification, INotification } from '../database/models/Notification';
+import { Types } from 'mongoose';
 
-export class NotificationService extends BaseService<INotification, NotificationRepository> {
-  constructor(repository: NotificationRepository) {
-    super(repository);
+export class NotificationService {
+  static async notifyAdmin(data: {
+    type: string;
+    title: string;
+    message: string;
+    priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+    complaintId?: Types.ObjectId | string;
+    transferRequestId?: Types.ObjectId | string;
+    senderId?: Types.ObjectId | string;
+    senderRole?: 'admin' | 'officer' | 'citizen' | 'system';
+    metadata?: any;
+  }) {
+    return Notification.create({
+      recipientRole: 'admin',
+      ...data
+    });
   }
 
-  async createNotification(data: Partial<INotification>, session?: ClientSession) {
-    return this.create(data, session);
+  static async notifyOfficer(
+    officerId: Types.ObjectId | string,
+    data: {
+      type: string;
+      title: string;
+      message: string;
+      priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+      complaintId?: Types.ObjectId | string;
+      transferRequestId?: Types.ObjectId | string;
+      senderId?: Types.ObjectId | string;
+      senderRole?: 'admin' | 'officer' | 'citizen' | 'system';
+      metadata?: any;
+    }
+  ) {
+    return Notification.create({
+      recipientId: officerId,
+      recipientRole: 'officer',
+      ...data
+    });
   }
 
-  async sendInAppNotification(data: Partial<INotification>, session?: ClientSession) {
-    return this.create(data, session);
+  static async getUserNotifications(userId: string | Types.ObjectId, role: string, limit: number = 20) {
+    return Notification.find({
+      $or: [
+        { recipientId: userId },
+        { recipientRole: role, recipientId: { $exists: false } },
+        { recipientRole: role, recipientId: null },
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit);
   }
 
-  async markAsRead(notificationId: string, session?: ClientSession) {
-    return this.update(notificationId, { $set: { isRead: true, readAt: new Date() } } as any, session);
+  static async getUnreadCount(userId: string | Types.ObjectId, role: string) {
+    return Notification.countDocuments({
+      $or: [
+        { recipientId: userId },
+        { recipientRole: role, recipientId: { $exists: false } },
+        { recipientRole: role, recipientId: null },
+      ],
+      isRead: false
+    });
   }
 
-  async markAllAsRead(userId: string) {
-    return this.repository.markAllRead(userId);
+  static async markAsRead(notificationId: string | Types.ObjectId, userId: string | Types.ObjectId) {
+    return Notification.findOneAndUpdate(
+      { _id: notificationId }, // Ideally also verify ownership
+      { $set: { isRead: true, readAt: new Date() } },
+      { new: true }
+    );
   }
 
-  async deleteNotification(notificationId: string, session?: ClientSession) {
-    return this.delete(notificationId, true, session);
+  static async markAllAsRead(userId: string | Types.ObjectId, role: string) {
+    return Notification.updateMany(
+      {
+        $or: [
+          { recipientId: userId },
+          { recipientRole: role, recipientId: { $exists: false } },
+          { recipientRole: role, recipientId: null },
+        ],
+        isRead: false
+      },
+      { $set: { isRead: true, readAt: new Date() } }
+    );
   }
 }

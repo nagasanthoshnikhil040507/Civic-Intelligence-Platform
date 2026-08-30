@@ -6,6 +6,10 @@ export interface IUser extends Document {
   email: string;
   passwordHash: string;
   role: 'citizen' | 'officer' | 'admin';
+  department?: 'SANITATION' | 'ROADS' | 'UNASSIGNED';
+  requestedDepartment?: 'SANITATION' | 'ROADS' | null;
+  departmentStatus?: 'PENDING' | 'APPROVED';
+  activeAssignments?: number;
   avatar?: string;
   phone?: string;
   address?: {
@@ -44,6 +48,10 @@ const userSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['citizen', 'officer', 'admin'], default: 'citizen' },
+    department: { type: String, enum: ['SANITATION', 'ROADS', 'UNASSIGNED'], default: 'UNASSIGNED' },
+    requestedDepartment: { type: String, enum: ['SANITATION', 'ROADS', null], default: null },
+    departmentStatus: { type: String, enum: ['PENDING', 'APPROVED'], default: 'PENDING' },
+    activeAssignments: { type: Number, default: 0 },
     avatar: { type: String },
     phone: { type: String },
     address: {
@@ -83,5 +91,17 @@ const userSchema = new Schema<IUser>(
 // Note: email index is automatically created by unique: true
 userSchema.index({ role: 1 });
 userSchema.index({ isDeleted: 1 });
+
+userSchema.pre('save', function (next) {
+  if (this.role === 'officer' && this.departmentStatus === 'PENDING' && !this.requestedDepartment) {
+    if (this.isNew) {
+      // Data integrity rule: Newly registered officers cannot be PENDING without a requested department
+      return next(new Error('Invalid department state: PENDING status requires a requestedDepartment'));
+    }
+    // For legacy or updated records, normalize the state
+    this.departmentStatus = 'APPROVED';
+  }
+  next();
+});
 
 export const User = model<IUser>('User', userSchema);

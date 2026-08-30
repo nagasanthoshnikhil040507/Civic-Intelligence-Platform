@@ -78,6 +78,9 @@ export class AuthController {
       const payload = {
         ...validatedData,
         phone: req.body.phone,
+        department: 'UNASSIGNED',
+        requestedDepartment: validatedData.department || null,
+        departmentStatus: validatedData.department && validatedData.department !== 'UNASSIGNED' ? 'PENDING' : 'APPROVED',
         ipAddress: req.ip,
         userAgent: req.headers['user-agent']
       };

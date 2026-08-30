@@ -4,7 +4,7 @@ import { ComplaintService, ComplaintResponse } from '@/services/complaint.servic
 import { useAuthStore } from '@/store/authStore';
 import { 
   Loader2, AlertCircle, ArrowLeft, Calendar, User, FileText, 
-  MapPin, Camera, Clock, Sparkles, CheckCircle, X
+  MapPin, Camera, Clock, Sparkles, CheckCircle, X, ArrowRightLeft
 } from 'lucide-react';
 import LocationPicker from '@/components/map/LocationPicker';
 
@@ -20,6 +20,8 @@ export default function OfficerComplaintDetails() {
   // Action states
   const [isUpdating, setIsUpdating] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferReason, setTransferReason] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
   const [workPerformed, setWorkPerformed] = useState('');
   const [resolutionImages, setResolutionImages] = useState<File[]>([]);
@@ -137,7 +139,33 @@ export default function OfficerComplaintDetails() {
     }
   };
 
+  const handleTransferRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || transferReason.trim().length < 10) return;
+    try {
+      setIsUpdating(true);
+      await ComplaintService.requestTransfer(id, transferReason);
+      await fetchComplaint();
+      setShowTransferModal(false);
+      setToast({ message: 'Transfer request submitted.', type: 'success' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err: any) {
+      setToast({ message: err.response?.data?.message || 'Failed to submit transfer request', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const renderActionButtons = () => {
+    if (complaint.activeTransferRequest) {
+      return (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 font-medium rounded-lg text-sm border border-amber-200">
+          <ArrowRightLeft className="w-4 h-4" /> Transfer Request Pending
+        </div>
+      );
+    }
+
     if (complaint.status === 'pending') {
       return (
         <button 
@@ -151,13 +179,21 @@ export default function OfficerComplaintDetails() {
     }
     if (complaint.status === 'assigned') {
       return (
-        <button 
-          onClick={() => handleStatusUpdate('in_progress')}
-          disabled={isUpdating}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors"
-        >
-          {isUpdating ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : 'Start Work (In Progress)'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowTransferModal(true)}
+            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
+          >
+            Request Transfer
+          </button>
+          <button 
+            onClick={() => handleStatusUpdate('in_progress')}
+            disabled={isUpdating}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors"
+          >
+            {isUpdating ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : 'Start Work (In Progress)'}
+          </button>
+        </div>
       );
     }
     if (complaint.status === 'in_progress') {
@@ -165,21 +201,25 @@ export default function OfficerComplaintDetails() {
         <button 
           onClick={() => setShowResolveModal(true)}
           disabled={isUpdating}
-          className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2"
         >
-          {isUpdating ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : 'Mark Resolved'}
+          {isUpdating ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : <FileText className="w-4 h-4" />}
+          Prepare Resolution Report
         </button>
       );
     }
     if (complaint.status === 'resolved') {
       return (
-        <button 
-          onClick={() => handleStatusUpdate('closed')}
-          disabled={isUpdating}
-          className="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-lg disabled:opacity-50 transition-colors"
-        >
-          {isUpdating ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : 'Close Case'}
-        </button>
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 font-medium rounded-lg text-sm border border-amber-200">
+          <Clock className="w-4 h-4" /> Pending Admin Review
+        </div>
+      );
+    }
+    if (complaint.status === 'closed') {
+      return (
+        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 font-medium rounded-lg text-sm border border-emerald-200">
+          <CheckCircle className="w-4 h-4" /> Report Verified
+        </div>
       );
     }
     return null;
@@ -568,8 +608,8 @@ export default function OfficerComplaintDetails() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                Resolve Case #{complaint._id.slice(-8).toUpperCase()}
+                <FileText className="w-5 h-5 text-green-600" />
+                Prepare Resolution Report #{complaint._id.slice(-8).toUpperCase()}
               </h3>
               <button 
                 onClick={() => setShowResolveModal(false)}
@@ -664,8 +704,62 @@ export default function OfficerComplaintDetails() {
                   disabled={isUpdating || resolutionNote.length < 10}
                   className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
-                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  Submit Resolution
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  Submit Resolution Report
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showTransferModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+                <ArrowRightLeft className="w-5 h-5 text-slate-700" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">Prepare Resolution Report</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Submit to admin for verification</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleTransferRequest} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Reason for Transfer
+                </label>
+                <textarea 
+                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 outline-none transition-all resize-none h-32"
+                  placeholder="Explain why you are unable to handle this complaint (e.g. requires heavy machinery, outside my zone, etc)..."
+                  value={transferReason}
+                  onChange={e => setTransferReason(e.target.value)}
+                  autoFocus
+                />
+                <p className="text-xs text-slate-400 mt-1">Minimum 10 characters required. The admin will review this reason.</p>
+              </div>
+              
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowTransferModal(false);
+                    setTransferReason('');
+                  }}
+                  disabled={isUpdating}
+                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isUpdating || transferReason.length < 10}
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-xl disabled:opacity-50 transition-colors flex items-center gap-2"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+                  Submit Request
                 </button>
               </div>
             </form>

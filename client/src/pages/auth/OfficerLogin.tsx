@@ -91,12 +91,19 @@ export default function OfficerLogin() {
         </button>
       </form>
 
-      <div className="text-center text-sm text-slate-500">
-        Officer accounts are provisioned internally. <br/>
-        <span className="text-slate-600 font-medium">Please contact your administrator for access.</span>
+      <div className="text-center space-y-2">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          New Officer?
+        </p>
+        <Link 
+          to="/officer/register" 
+          className="inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+        >
+          Create Officer Account
+        </Link>
       </div>
 
-      <div className="pt-4 flex justify-center border-t border-slate-200">
+      <div className="pt-4 flex justify-center border-t border-slate-200 dark:border-slate-800">
         <Link to="/" className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Return to Main Portal

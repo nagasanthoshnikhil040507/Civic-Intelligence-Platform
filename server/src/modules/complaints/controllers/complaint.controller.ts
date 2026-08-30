@@ -8,6 +8,7 @@ import { createComplaintSchema, updateComplaintSchema, queryComplaintSchema } fr
 
 import { ApiError } from '../../../utils/ApiError';
 import { ApiResponse } from '../../../utils/ApiResponse';
+import { NotificationService } from '../../../services/NotificationService';
 import fs from 'fs';
 import path from 'path';
 
@@ -258,6 +259,20 @@ export class ComplaintController {
 
       const complaint = await complaintService.updateStatus(req.params.id, newStatus, officerId, validatedData.note);
       await auditLogService.recordEntityChange('Complaint', req.params.id, 'STATUS_UPDATED', [], officerId, req.ip, req.headers['user-agent']);
+      
+      if (newStatus === 'in_progress') {
+        const userObj = await require('../../../database/models/User').User.findById(officerId);
+        await NotificationService.notifyAdmin({
+          type: 'COMPLAINT_PROGRESS_STARTED',
+          title: 'Officer Started Work',
+          message: `Officer ${userObj?.firstName || ''} ${userObj?.lastName || ''} has started working on complaint "${existingComplaint.title}".`,
+          priority: 'NORMAL',
+          complaintId: req.params.id,
+          senderId: officerId,
+          senderRole: 'officer'
+        });
+      }
+
       res.status(200).json(new ApiResponse(200, complaint, 'Complaint status updated'));
     } catch (error) {
       if (error instanceof ZodError) return next(new ApiError(400, `Validation Error: ${error.errors.map((e:any) => e.message).join(', ')}`));
@@ -284,9 +299,87 @@ export class ComplaintController {
       );
 
       await auditLogService.recordEntityChange('Complaint', req.params.id, 'COMPLAINT_RESOLVED', [], officerId, req.ip, req.headers['user-agent']);
+      
+      const userObj = await require('../../../database/models/User').User.findById(officerId);
+      await NotificationService.notifyAdmin({
+        type: 'COMPLAINT_RESOLVED',
+        title: 'Complaint Work Completed',
+        message: `Officer ${userObj?.firstName || ''} ${userObj?.lastName || ''} has completed work on complaint "${existingComplaint.title}".`,
+        priority: 'HIGH',
+        complaintId: req.params.id,
+        senderId: officerId,
+        senderRole: 'officer'
+      });
+
       res.status(200).json(new ApiResponse(200, complaint, 'Complaint resolved successfully'));
     } catch (error) {
       if (error instanceof ZodError) return next(new ApiError(400, `Validation Error: ${error.errors.map((e:any) => e.message).join(', ')}`));
+      next(error);
+    }
+  }
+
+  static async requestTransfer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { reason } = req.body;
+      if (!reason || reason.trim().length < 10) {
+        throw new ApiError(400, 'A detailed reason (at least 10 characters) is required for transfer requests.');
+      }
+      
+      const officerId = req.user!.userId;
+      const complaintId = req.params.id;
+      
+      const existingComplaint = await complaintService.getById(complaintId);
+      
+      // Allow verifyOfficerAccess to check if they are the CURRENT assignee (it will also reject if already locked, but that's fine!)
+      await complaintService.verifyOfficerAccess(existingComplaint, officerId);
+      
+      if (existingComplaint.status === 'resolved' || existingComplaint.status === 'closed') {
+        throw new ApiError(400, 'Cannot transfer a resolved or closed complaint.');
+      }
+      
+      if (existingComplaint.activeTransferRequest) {
+        throw new ApiError(400, 'A transfer request is already pending for this complaint.');
+      }
+
+      const { TransferRequest } = require('../../../database/models/TransferRequest');
+      const { getDepartmentForCategory } = require('../../../utils/departmentMapping');
+      
+      const transferRequest = await TransferRequest.create({
+        complaintId,
+        requestedByOfficerId: officerId,
+        department: getDepartmentForCategory(existingComplaint.category),
+        reason,
+        status: 'PENDING'
+      });
+      
+      const complaint = await complaintService.update(complaintId, { 
+        $set: { activeTransferRequest: transferRequest._id },
+        $push: {
+          timeline: {
+            status: existingComplaint.status,
+            updatedBy: officerId,
+            timestamp: new Date(),
+            note: 'Officer requested transfer.'
+          }
+        }
+      } as any);
+
+      await auditLogService.recordEntityChange('Complaint', complaintId, 'TRANSFER_REQUESTED', [], officerId, req.ip, req.headers['user-agent']);
+      
+      const userObj = await require('../../../database/models/User').User.findById(officerId);
+      await NotificationService.notifyAdmin({
+        type: 'COMPLAINT_TRANSFER_REQUESTED',
+        title: 'New Complaint Transfer Request',
+        message: `Officer ${userObj?.firstName || ''} ${userObj?.lastName || ''} requested to transfer complaint "${existingComplaint.title}".\nReason: ${reason}`,
+        priority: 'HIGH',
+        complaintId: complaintId,
+        transferRequestId: transferRequest._id,
+        senderId: officerId,
+        senderRole: 'officer'
+      });
+
+      res.status(200).json(new ApiResponse(200, complaint, 'Transfer request submitted successfully.'));
+    } catch (error) {
       next(error);
     }
   }
